@@ -1,0 +1,1940 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sistema RITE · CENS Nº 451</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===== RESET & VARIABLES ===== */
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --verde:#1a5c3a;--verde-claro:#e8f5ee;--verde-mid:#2d7a52;--verde-dark:#123d27;
+  --amarillo:#f5a623;--amarillo-claro:#fff8ed;
+  --rojo:#c0392b;--rojo-claro:#fdf0ee;
+  --azul:#1a4a7a;--azul-claro:#eaf2fb;
+  --gris:#f4f3f0;--borde:#e0ddd5;
+  --texto:#1a1a18;--texto2:#5a5a55;--texto3:#9a9a90;
+  --blanco:#ffffff;
+  --radius:10px;--radius-lg:16px;
+  --shadow:0 2px 12px rgba(0,0,0,.08);
+  --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+}
+body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);font-size:14px;min-height:100vh}
+.app{max-width:720px;margin:0 auto;padding:12px 10px 80px}
+
+/* ===== HEADER ===== */
+.header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,var(--verde-dark) 0%,var(--verde-mid) 100%);border-radius:var(--radius-lg);margin-bottom:16px;color:white;box-shadow:var(--shadow-lg)}
+.header-logo{font-family:'JetBrains Mono',monospace;font-size:11px;background:rgba(255,255,255,.18);border-radius:6px;padding:5px 10px;letter-spacing:1px;font-weight:500;flex-shrink:0}
+.header-title{font-size:15px;font-weight:600;flex:1;line-height:1.3}
+.header-user{font-size:11px;opacity:.75;margin-top:2px}
+.header-ciclo{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(255,255,255,.12);border-radius:4px;padding:3px 8px;opacity:.9;flex-shrink:0}
+
+/* ===== SCREENS ===== */
+.screen{display:none}.screen.active{display:block}
+
+/* ===== PANTALLA INICIO ===== */
+.inicio-hero{background:linear-gradient(135deg,var(--verde-dark) 0%,var(--verde) 60%,var(--verde-mid) 100%);border-radius:20px;padding:28px 24px 24px;margin-bottom:16px;color:white;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+.inicio-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.05);border-radius:50%}
+.inicio-hero::after{content:'';position:absolute;bottom:-20px;left:30px;width:100px;height:100px;background:rgba(255,255,255,.04);border-radius:50%}
+.inicio-hero-logo{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(255,255,255,.15);display:inline-block;padding:5px 12px;border-radius:6px;letter-spacing:1.5px;margin-bottom:14px}
+.inicio-hero-title{font-size:22px;font-weight:700;line-height:1.2;margin-bottom:6px}
+.inicio-hero-sub{font-size:13px;opacity:.8;margin-bottom:16px}
+.inicio-hero-ciclo{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:500}
+.inicio-hero-ciclo span{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600}
+
+/* ===== CARDS ===== */
+.card{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card-title{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
+
+/* ===== ROLE BUTTONS ===== */
+.role-btn{width:100%;background:var(--blanco);border:1.5px solid var(--borde);border-radius:var(--radius-lg);padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:14px;margin-bottom:10px;transition:all .2s;text-align:left}
+.role-btn:hover{border-color:var(--verde);background:var(--verde-claro);box-shadow:0 4px 16px rgba(26,92,58,.12);transform:translateY(-1px)}
+.role-btn:active{transform:translateY(0)}
+.role-icon{width:44px;height:44px;border-radius:12px;background:var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.role-text .rt{font-size:14px;font-weight:600;color:var(--texto)}
+.role-text .rs{font-size:12px;color:var(--texto2);margin-top:2px}
+
+/* ===== FORM ===== */
+.field{margin-bottom:14px}
+.field label{display:block;font-size:12px;font-weight:500;color:var(--texto2);margin-bottom:5px}
+.field input,.field select,.field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;background:var(--blanco);color:var(--texto);outline:none;transition:all .2s}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--verde);box-shadow:0 0 0 3px rgba(26,92,58,.1)}
+.field textarea{resize:vertical;min-height:70px}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-hint{font-size:11px;color:var(--texto3);margin-top:4px}
+
+/* ===== SELECTOR HÍBRIDO DE MATERIA ===== */
+.materia-hybrid{position:relative}
+.materia-hybrid-tabs{display:flex;gap:4px;margin-bottom:8px}
+.materia-tab{flex:1;padding:7px;font-size:12px;font-weight:500;border:1.5px solid var(--borde);border-radius:8px;background:var(--gris);cursor:pointer;font-family:inherit;color:var(--texto2);transition:all .2s;text-align:center}
+.materia-tab.active{background:var(--verde);color:white;border-color:var(--verde)}
+.materia-filtros{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+.materia-filtros select{padding:7px 10px;border:1.5px solid var(--borde);border-radius:8px;font-family:inherit;font-size:12px;background:var(--blanco);color:var(--texto);outline:none;cursor:pointer}
+.materia-filtros select:focus{border-color:var(--verde)}
+
+/* ===== BOTONES ===== */
+.btn{padding:10px 20px;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s}
+.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--verde);color:white;width:100%;padding:13px}
+.btn-primary:hover{background:var(--verde-mid);box-shadow:0 4px 16px rgba(26,92,58,.35)}
+.btn-secondary{background:var(--gris);border:1.5px solid var(--borde);color:var(--texto)}
+.btn-secondary:hover{background:var(--borde)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-danger{background:var(--rojo-claro);color:var(--rojo);border:1px solid #f5c6c2}
+.btn-pdf{background:var(--azul);color:white;padding:10px 20px;border-radius:var(--radius);font-size:14px;font-weight:500;cursor:pointer;border:none;margin-right:8px;display:inline-flex;align-items:center;gap:6px}
+.btn-pdf:hover{background:#1a5a96}
+
+/* ===== NAV ===== */
+.nav{display:flex;align-items:center;gap:10px;margin-bottom:16px}
+.back-btn{background:var(--blanco);border:1.5px solid var(--borde);border-radius:8px;padding:7px 13px;cursor:pointer;font-size:16px;color:var(--texto2);box-shadow:var(--shadow)}
+.back-btn:hover{background:var(--gris)}
+.nav-info .nt{font-size:15px;font-weight:600}
+.nav-info .ns{font-size:12px;color:var(--texto2)}
+
+/* ===== STATS ===== */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:14px}
+.stat{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radius);padding:12px;text-align:center;box-shadow:var(--shadow)}
+.stat .sn{font-size:22px;font-weight:700}
+.stat .sl{font-size:11px;color:var(--texto2);margin-top:2px}
+.stat.verde .sn{color:var(--verde)}
+.stat.amarillo .sn{color:var(--amarillo)}
+.stat.rojo .sn{color:var(--rojo)}
+.stat.azul .sn{color:var(--azul)}
+
+/* ===== MENU GRID ===== */
+.menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.menu-card{background:var(--blanco);border:1.5px solid var(--borde);border-radius:var(--radius-lg);padding:16px;cursor:pointer;text-align:left;transition:all .2s;box-shadow:var(--shadow)}
+.menu-card:hover{border-color:var(--verde);background:var(--verde-claro);transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,92,58,.14)}
+.menu-card .mc-icon{font-size:26px;margin-bottom:8px}
+.menu-card .mc-title{font-size:13px;font-weight:600;color:var(--texto)}
+.menu-card .mc-desc{font-size:11px;color:var(--texto2);margin-top:3px}
+
+/* ===== TABS ===== */
+.tabs{display:flex;gap:4px;background:var(--gris);border-radius:var(--radius);padding:3px;margin-bottom:14px;border:1px solid var(--borde)}
+.tab{flex:1;padding:8px;font-size:12px;font-weight:500;border:none;background:none;cursor:pointer;border-radius:8px;color:var(--texto2);font-family:inherit;transition:all .2s}
+.tab.active{background:var(--blanco);color:var(--verde);border:1px solid var(--borde)}
+
+/* ===== TABLA ===== */
+.tabla-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--borde)}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{background:var(--gris)}
+th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--texto2);border-bottom:1px solid var(--borde);white-space:nowrap}
+td{padding:8px 10px;border-bottom:1px solid var(--borde);color:var(--texto);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#fafaf8}
+.td-nombre{max-width:180px;font-weight:500}
+
+/* ===== SELECTS EN TABLA ===== */
+.nota-sel{padding:4px 6px;border:1px solid var(--borde);border-radius:6px;font-size:12px;font-family:inherit;background:var(--blanco);cursor:pointer}
+.nota-num{width:60px;padding:4px 8px;border:1px solid var(--borde);border-radius:6px;font-size:12px;font-family:inherit;text-align:center}
+.nota-num:focus,.nota-sel:focus{outline:2px solid var(--verde);outline-offset:1px}
+
+/* ===== BADGES ===== */
+.badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
+.badge-tel{background:#e8f5ee;color:#1a5c3a}
+.badge-tep{background:#fff3e0;color:#e65100}
+.badge-ted{background:#fdf0ee;color:#c0392b}
+.badge-apr{background:#e8f5ee;color:#1a5c3a}
+.badge-pen{background:#fdf0ee;color:#c0392b}
+.badge-sin{background:#f0f0ee;color:#5a5a55}
+
+/* ===== INFO BOXES ===== */
+.info-box{background:var(--azul-claro);border:1px solid #b8d4f0;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--azul);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
+.warn-box{background:var(--amarillo-claro);border:1px solid #f5d98a;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:#7a4e00;margin-bottom:12px}
+.ok-box{background:var(--verde-claro);border:1px solid #b0d9c0;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--verde);margin-bottom:12px}
+.err-box{background:var(--rojo-claro);border:1px solid #f5c6c2;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--rojo);margin-bottom:12px}
+
+/* ===== CONTENIDOS ===== */
+.cont-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--borde)}
+.cont-item:last-child{border-bottom:none}
+.cont-item span{flex:1;font-size:13px}
+.cont-checks{display:flex;gap:12px}
+.cont-checks label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:var(--texto2)}
+.cont-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.chip{background:var(--verde-claro);color:var(--verde);border:1px solid #b0d9c0;border-radius:20px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:5px}
+.chip-x{cursor:pointer;opacity:.6;font-size:14px;line-height:1}
+.chip-x:hover{opacity:1}
+.add-cont{display:flex;gap:8px;margin-top:8px}
+.add-cont input{flex:1;padding:9px 12px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;outline:none;transition:all .2s}
+.add-cont input:focus{border-color:var(--verde)}
+
+/* ===== PENDIENTES CARD ===== */
+.pend-alumno{background:var(--rojo-claro);border:1px solid #f5c6c2;border-radius:var(--radius);padding:10px 14px;margin-bottom:8px}
+.pend-alumno .pa-nombre{font-weight:600;font-size:13px;color:var(--rojo);margin-bottom:4px}
+.pend-alumno .pa-mat{font-size:11px;color:var(--texto2);padding:2px 0}
+
+/* ===== LOADING ===== */
+.loading{text-align:center;padding:40px;color:var(--texto2)}
+.spinner{width:28px;height:28px;border:3px solid var(--borde);border-top-color:var(--verde);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 12px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ===== LOADING OVERLAY ===== */
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
+.loading-overlay .spinner{width:36px;height:36px;border-width:4px;margin-bottom:16px}
+.loading-overlay p{font-size:14px;color:var(--texto2);font-weight:500}
+
+/* ===== MISC ===== */
+.scroll-section{max-height:340px;overflow-y:auto}
+.empty{text-align:center;padding:30px;color:var(--texto3);font-size:13px}
+.error-msg{color:var(--rojo);font-size:12px;margin-top:5px}
+.divider{height:1px;background:var(--borde);margin:14px 0}
+.section-label{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+
+/* ===== TOAST ===== */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--verde-dark);color:white;padding:11px 22px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.25);white-space:nowrap;animation:toast-in .2s ease}
+.toast.err{background:var(--rojo)}
+@keyframes toast-in{from{opacity:0;transform:translateX(-50%) translateY(10px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+
+/* ===== RITE PREVIEW IN-APP ===== */
+.rite-doc{background:white;border:1px solid var(--borde);border-radius:var(--radius);padding:20px;font-size:11px}
+.rite-header-doc{border-bottom:2px solid var(--verde);padding-bottom:10px;margin-bottom:12px}
+.rite-titulo{font-size:15px;font-weight:600;color:var(--verde)}
+.rite-sub{font-size:11px;color:var(--texto2);margin-top:2px}
+.rite-alumno-box{background:var(--gris);border-radius:8px;padding:10px 14px;margin-bottom:12px}
+.rite-alumno-box p{font-size:13px;font-weight:600}
+.rite-alumno-box span{font-size:11px;color:var(--texto2)}
+.rite-section{font-size:11px;font-weight:600;color:var(--verde);margin:10px 0 5px;text-transform:uppercase;letter-spacing:.3px}
+.rite-table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px}
+.rite-table th{background:var(--verde);color:white;padding:5px 7px;text-align:left;font-weight:500;font-size:10px}
+.rite-table td{padding:5px 7px;border-bottom:1px solid var(--borde);vertical-align:middle}
+.rite-table tr:last-child td{border:none}
+.rite-cont-box{background:var(--gris);border-radius:6px;padding:8px 10px;font-size:11px;margin-bottom:6px}
+
+/* ===== ALUMNO RITE CARD ===== */
+.alumno-rite-card{background:linear-gradient(135deg,var(--verde-claro),#fff);border:2px solid var(--verde);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;text-align:center}
+.alumno-rite-card .arc-nombre{font-size:18px;font-weight:700;color:var(--verde-dark);margin-bottom:4px}
+.alumno-rite-card .arc-curso{font-size:13px;color:var(--texto2)}
+.alumno-rite-card .arc-ciclo{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--verde);margin-top:6px;display:inline-block;background:var(--verde-claro);border:1px solid #b0d9c0;padding:3px 12px;border-radius:20px}
+
+/* ===== MATERIAS ADMIN ===== */
+.materia-item{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--borde)}
+.materia-item:last-child{border-bottom:none}
+.materia-item .mi-nombre{font-size:13px;font-weight:500}
+.materia-item .mi-meta{font-size:11px;color:var(--texto3);margin-top:1px}
+
+/* ===== PRINT RITE (documento oficial fiel) ===== */
+@media print{
+  body{background:white!important;font-family:'Times New Roman',serif;font-size:11px;color:#000}
+  .app{padding:0;max-width:none}
+  .no-print,.header,.nav,.btn,.back-btn,.menu-grid,.tabs,#app > .screen:not(.active){display:none!important}
+  .screen.active{display:block!important}
+  #rite-preview{border:none!important;box-shadow:none!important}
+  .rite-doc{display:none!important}
+  #rite-print-area{display:block!important}
+  .card{border:none!important;box-shadow:none!important;padding:0!important;margin:0!important}
+  #rite-print-area *{box-sizing:border-box}
+  #rite-print-area .p-page{max-width:none;padding:12px 20px;background:white}
+  #rite-print-area .p-header-top{display:flex;justify-content:space-between;margin-bottom:5px}
+  #rite-print-area .p-año{font-size:9px;font-style:italic}
+  #rite-print-area .p-titulo{font-size:17px;font-weight:700;text-align:center;letter-spacing:1px;margin-bottom:2px}
+  #rite-print-area .p-subtitulo{font-size:9px;text-align:center;font-style:italic;margin-bottom:8px}
+  #rite-print-area .p-info-bloque{display:grid;grid-template-columns:1fr 1fr 1fr;border:1px solid #000;margin-bottom:8px}
+  #rite-print-area .p-info-celda{padding:3px 6px;border-right:1px solid #000;font-size:10px}
+  #rite-print-area .p-info-celda:last-child{border-right:none}
+  #rite-print-area .p-info-celda b{display:block;font-size:9px;text-transform:uppercase}
+  #rite-print-area .p-alumno-bloque{border:1px solid #000;padding:4px 8px;margin-bottom:8px;display:flex;gap:20px}
+  #rite-print-area .p-leyenda{border:1px solid #ccc;padding:4px 8px;margin-bottom:6px;font-size:8px;display:flex;gap:14px;align-items:center}
+  #rite-print-area .p-seccion{background:#000;color:#fff;font-size:9px;font-weight:700;padding:2px 5px;text-transform:uppercase;letter-spacing:.5px;margin-bottom:0}
+  #rite-print-area table{width:100%;border-collapse:collapse;font-size:9px;margin-bottom:8px}
+  #rite-print-area th{background:#d0d0d0;border:1px solid #000;padding:2px 4px;text-align:center;font-weight:700;font-size:8px;text-transform:uppercase}
+  #rite-print-area td{border:1px solid #000;padding:2px 4px;text-align:center;vertical-align:middle;font-size:9px}
+  #rite-print-area td.left{text-align:left}
+  #rite-print-area .tel{background:#e8f5e8;font-weight:700;color:#1a5c3a}
+  #rite-print-area .tep{background:#fff3e0;font-weight:700;color:#e65100}
+  #rite-print-area .ted{background:#fde8e8;font-weight:700;color:#c62828}
+  #rite-print-area .apr{background:#e8f5e8}
+  #rite-print-area .pen{background:#fde8e8}
+  #rite-print-area .p-modulo-estado{border:1px solid #000;border-top:none;padding:4px;text-align:center;font-size:10px;margin-bottom:8px}
+  #rite-print-area .p-cont-bloque{border:1px solid #000;padding:5px;margin-bottom:8px;font-size:9px}
+  #rite-print-area .p-cont-titulo{font-weight:700;font-size:8px;text-transform:uppercase;border-bottom:1px solid #ccc;padding-bottom:2px;margin-bottom:3px}
+  #rite-print-area .p-cont-row{display:grid;grid-template-columns:130px 1fr 1fr;gap:3px;padding:2px 0;border-bottom:1px solid #f0f0f0;font-size:8px}
+  #rite-print-area .p-cont-row:last-child{border-bottom:none}
+  #rite-print-area .firmas{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-top:16px;padding-top:8px;border-top:1px solid #000}
+  #rite-print-area .firma-item{text-align:center;font-size:9px}
+  #rite-print-area .firma-linea{border-bottom:1px solid #000;height:28px;margin-bottom:3px}
+  #rite-print-area .nota-legal{font-size:7.5px;color:#555;border-top:1px solid #ccc;padding-top:4px;margin-top:6px;font-style:italic;line-height:1.4}
+}
+#rite-print-area{display:none}
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+<!-- ============ LOADING OVERLAY ============ -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <p>Cargando sistema RITE…</p>
+</div>
+
+<!-- ============ INICIO ============ -->
+<div class="screen" id="s-inicio">
+  <div class="inicio-hero">
+    <div class="inicio-hero-logo">RITE</div>
+    <div class="inicio-hero-title" id="hero-cens-nombre">CENS Nº 451</div>
+    <div class="inicio-hero-sub" id="hero-distrito">La Matanza · Buenos Aires</div>
+    <div class="inicio-hero-ciclo">Ciclo Lectivo <span id="hero-ciclo">2026</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">¿Con qué perfil ingresás?</div>
+    <button class="role-btn" onclick="go('s-login','alumno')">
+      <div class="role-icon">🎓</div>
+      <div class="role-text"><div class="rt">Estudiante</div><div class="rs">Descargá tu RITE con tu DNI</div></div>
+    </button>
+    <button class="role-btn" onclick="go('s-login','docente')">
+      <div class="role-icon">📚</div>
+      <div class="role-text"><div class="rt">Docente</div><div class="rs">Cargo notas y contenidos de mi materia</div></div>
+    </button>
+    <button class="role-btn" onclick="go('s-login','preceptor')">
+      <div class="role-icon">📋</div>
+      <div class="role-text"><div class="rt">Preceptor/a</div><div class="rs">Genero RITE e informes por alumno y curso</div></div>
+    </button>
+    <button class="role-btn" onclick="go('s-login','dicyt')">
+      <div class="role-icon">🔬</div>
+      <div class="role-text"><div class="rt">Profesor Dicyt</div><div class="rs">Cargo Proyecto de Acción · Veo todas las notas</div></div>
+    </button>
+    <button class="role-btn" onclick="go('s-login','directivo')">
+      <div class="role-icon">🏫</div>
+      <div class="role-text"><div class="rt">Directivo/a</div><div class="rs">Accedo a informes generales del CENS</div></div>
+    </button>
+  </div>
+  <div style="text-align:center;font-size:11px;color:var(--texto3);margin-top:8px">Sistema RITE · v3.0</div>
+</div>
+
+<!-- ============ LOGIN ============ -->
+<div class="screen" id="s-login">
+  <div class="header">
+    <div class="header-logo">RITE</div>
+    <div class="header-title" id="login-title">Ingreso</div>
+  </div>
+  <div class="card">
+    <!-- ALUMNO -->
+    <div id="login-alumno-fields" style="display:none">
+      <div class="info-box">ℹ Ingresá tu DNI para ver y descargar tu RITE personal.</div>
+      <div class="field"><label>Tu DNI</label><input id="alu-dni" type="text" inputmode="numeric" placeholder="Sin puntos · Ej: 28345678"></div>
+    </div>
+    <!-- DOCENTE -->
+    <div id="login-docente-fields" style="display:none">
+      <div class="field-row">
+        <div class="field"><label>Nombre</label><input id="doc-nombre" type="text" placeholder="Ej: María"></div>
+        <div class="field"><label>Apellido</label><input id="doc-apellido" type="text" placeholder="Ej: González"></div>
+      </div>
+      <div class="field"><label>DNI</label><input id="doc-dni" type="text" inputmode="numeric" placeholder="Sin puntos · Ej: 28345678"></div>
+      <div class="divider"></div>
+      <div class="field"><label>Curso donde impartís clases</label><select id="doc-curso"></select></div>
+      <div class="field">
+        <label>Materia</label>
+        <div class="materia-hybrid">
+          <div class="materia-hybrid-tabs">
+            <button class="materia-tab active" onclick="setMateriaTab('lista')">Elegir de la lista</button>
+            <button class="materia-tab" onclick="setMateriaTab('manual')">Escribir manualmente</button>
+          </div>
+          <div id="materia-lista-panel">
+            <div class="materia-filtros">
+              <select id="mat-filtro-modalidad" onchange="filtrarMaterias()">
+                <option value="">Modalidad…</option>
+                <option value="Bachiller en Ciencias Sociales">Cs. Sociales</option>
+                <option value="Bachiller en Economía y Administración">Economía</option>
+              </select>
+              <select id="mat-filtro-anio" onchange="filtrarMaterias()">
+                <option value="">Año…</option>
+                <option value="1° Año">1° Año</option>
+                <option value="2° Año">2° Año</option>
+                <option value="3° Año">3° Año</option>
+              </select>
+              <select id="mat-filtro-cuatri" onchange="filtrarMaterias()">
+                <option value="">Cuatrimestre…</option>
+                <option value="1° Cuatrimestre">1° Cuatrim.</option>
+                <option value="2° Cuatrimestre">2° Cuatrim.</option>
+              </select>
+            </div>
+            <select id="doc-materia-sel" size="5" style="width:100%;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:13px;padding:4px"></select>
+          </div>
+          <div id="materia-manual-panel" style="display:none">
+            <input id="doc-materia-txt" type="text" placeholder="Escribí el nombre exacto de la materia" style="width:100%;padding:10px 13px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;outline:none">
+            <div class="field-hint">Usá esto si el diseño curricular cambió y la materia no aparece en la lista.</div>
+          </div>
+        </div>
+      </div>
+      <div class="field"><label>Cuatrimestre</label>
+        <select id="doc-cuatrimestre">
+          <option value="1">1° Cuatrimestre</option>
+          <option value="2">2° Cuatrimestre</option>
+        </select>
+      </div>
+    </div>
+    <!-- OTROS (preceptor, dicyt, directivo) -->
+    <div id="login-otros-fields" style="display:none">
+      <div class="field"><label>Nombre y apellido</label><input id="ot-nombre" type="text" placeholder="Ej: Ana Ramírez"></div>
+      <div class="field"><label>Contraseña</label><input id="ot-pass" type="password" placeholder="Clave de acceso"></div>
+    </div>
+    <div id="login-error" class="err-box" style="display:none">⚠ Datos incorrectos. Verificá los campos.</div>
+    <div id="login-loading" class="info-box" style="display:none">⏳ Verificando datos…</div>
+    <button class="btn btn-primary" onclick="doLogin()" style="margin-top:8px" id="btn-login">Ingresar al sistema →</button>
+    <div style="margin-top:10px;text-align:center"><button class="btn btn-secondary btn-sm no-print" onclick="go('s-inicio','')">← Volver</button></div>
+  </div>
+</div>
+
+<!-- ============ ALUMNO — MI RITE ============ -->
+<div class="screen" id="s-alumno-rite">
+  <div class="header">
+    <div class="header-logo">RITE</div>
+    <div style="flex:1">
+      <div class="header-title">Mi RITE</div>
+      <div class="header-user" id="alu-header-user"></div>
+    </div>
+    <div class="header-ciclo" id="alu-header-ciclo">2026</div>
+  </div>
+  <div id="alu-rite-content">
+    <div class="loading"><div class="spinner"></div>Cargando tu RITE…</div>
+  </div>
+  <div id="alu-acciones" style="display:none;margin-bottom:12px" class="no-print">
+    <button class="btn-pdf" onclick="imprimirRite()">🖨 Imprimir / Guardar PDF</button>
+  </div>
+  <div style="margin-top:14px;text-align:center" class="no-print">
+    <button class="btn btn-secondary btn-sm" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ============ MENÚ DOCENTE ============ -->
+<div class="screen" id="s-menu-doc">
+  <div class="header">
+    <div class="header-logo">RITE</div>
+    <div style="flex:1">
+      <div class="header-title" id="doc-header-title">Materia · Curso</div>
+      <div class="header-user" id="doc-header-user"></div>
+    </div>
+    <div class="header-ciclo" id="doc-header-ciclo">2026</div>
+  </div>
+  <div class="stats" id="doc-stats"></div>
+  <div class="menu-grid">
+    <button class="menu-card" onclick="go('s-bimestre','')">
+      <div class="mc-icon">📝</div>
+      <div class="mc-title" id="btn-bim-title">Trayectoria del Bimestre</div>
+      <div class="mc-desc">TEL · TEP · TED por alumno</div>
+    </button>
+    <button class="menu-card" onclick="go('s-cierre','')">
+      <div class="mc-icon">🎯</div>
+      <div class="mc-title" id="btn-cierre-title">Cierre del Cuatrimestre</div>
+      <div class="mc-desc">Nota final y contenidos</div>
+    </button>
+    <button class="menu-card" onclick="go('s-contenidos','')">
+      <div class="mc-icon">📖</div>
+      <div class="mc-title">Contenidos</div>
+      <div class="mc-desc">Temas del cuatrimestre</div>
+    </button>
+    <button class="menu-card" onclick="go('s-recuperaciones','')">
+      <div class="mc-icon">🔄</div>
+      <div class="mc-title">Recuperaciones</div>
+      <div class="mc-desc">Agosto · Diciembre · Febrero</div>
+    </button>
+  </div>
+  <div style="margin-top:14px;text-align:center">
+    <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ============ BIMESTRE ============ -->
+<div class="screen" id="s-bimestre">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt" id="bim-title">Trayectoria</div><div class="ns" id="bim-sub"></div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Registrá la trayectoria de cada alumno/a al finalizar el bimestre.</div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Alumno/a</th><th>Trayectoria</th></tr></thead>
+        <tbody id="bim-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="guardarBimestre()">💾 Guardar trayectorias</button>
+  </div>
+</div>
+
+<!-- ============ CIERRE ============ -->
+<div class="screen" id="s-cierre">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt" id="cierre-title">Cierre</div><div class="ns" id="cierre-sub"></div></div>
+  </div>
+  <div class="card">
+    <div id="cierre-sin-bim" class="warn-box" style="display:none">⚠ Aún no cargaste las trayectorias del bimestre. Podés hacerlo desde el menú.</div>
+    <div id="cierre-sin-cont" class="warn-box" style="display:none">⚠ No hay contenidos cargados. Podés agregarlos desde "Contenidos".</div>
+    <div class="info-box">ℹ Nota de 1 a 10. Se aprueba con 7 o más.</div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Alumno/a</th><th>Nota</th><th>Estado</th></tr></thead>
+        <tbody id="cierre-tbody"></tbody>
+      </table>
+    </div>
+    <div id="cierre-cont-section" style="margin-top:16px;display:none">
+      <div class="section-label">Contenidos por alumno — marcá alcanzados/pendientes</div>
+      <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">Hacé click en el nombre de un alumno para ver sus contenidos.</p>
+      <div id="cierre-cont-list"></div>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="guardarCierre()">💾 Guardar cierre del cuatrimestre</button>
+  </div>
+</div>
+
+<!-- ============ CONTENIDOS ============ -->
+<div class="screen" id="s-contenidos">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt">Contenidos de la materia</div><div class="ns" id="cont-sub"></div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Cargá los temas una sola vez. Quedan disponibles para todos los alumnos al cerrar el cuatrimestre.</div>
+    <div class="section-label" id="cont-q-label">Contenidos del cuatrimestre</div>
+    <div class="cont-chips" id="cont-chips"></div>
+    <div class="add-cont">
+      <input type="text" id="cont-input" placeholder="Escribí un contenido y presioná Agregar" onkeydown="if(event.key==='Enter')agregarContenido()">
+      <button class="btn btn-secondary" onclick="agregarContenido()">+ Agregar</button>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="guardarContenidos()">💾 Guardar contenidos</button>
+  </div>
+</div>
+
+<!-- ============ RECUPERACIONES ============ -->
+<div class="screen" id="s-recuperaciones">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt">Recuperaciones</div><div class="ns" id="rec-sub"></div></div>
+  </div>
+  <div id="rec-content"></div>
+</div>
+
+<!-- ============ MENÚ PRECEPTOR / DIRECTIVO ============ -->
+<div class="screen" id="s-menu-prec">
+  <div class="header">
+    <div class="header-logo">RITE</div>
+    <div style="flex:1">
+      <div class="header-title" id="prec-header-title">Preceptoría</div>
+      <div class="header-user" id="prec-header-user"></div>
+    </div>
+    <div class="header-ciclo" id="prec-header-ciclo">2026</div>
+  </div>
+  <div class="stats" id="prec-stats"></div>
+  <div class="menu-grid">
+    <button class="menu-card" onclick="go('s-rite-gen','')">
+      <div class="mc-icon">📄</div>
+      <div class="mc-title">Generar RITE</div>
+      <div class="mc-desc">Informe por alumno → PDF</div>
+    </button>
+    <button class="menu-card" onclick="go('s-informe-curso','')">
+      <div class="mc-icon">📊</div>
+      <div class="mc-title">Informe por curso</div>
+      <div class="mc-desc">Estado general del curso</div>
+    </button>
+    <button class="menu-card" onclick="go('s-pendientes','')">
+      <div class="mc-icon">⚠️</div>
+      <div class="mc-title">Pendientes</div>
+      <div class="mc-desc">Alumnos con materias pendientes</div>
+    </button>
+    <button class="menu-card" onclick="go('s-ver-notas','')">
+      <div class="mc-icon">🔍</div>
+      <div class="mc-title">Ver todas las notas</div>
+      <div class="mc-desc">Por materia y docente</div>
+    </button>
+    <button class="menu-card" onclick="go('s-alumnos-curso','')">
+      <div class="mc-icon">👥</div>
+      <div class="mc-title">Alumnos por curso</div>
+      <div class="mc-desc">Listado completo</div>
+    </button>
+  </div>
+  <div style="margin-top:14px;text-align:center">
+    <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ============ GENERAR RITE ============ -->
+<div class="screen" id="s-rite-gen">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Generar RITE</div><div class="ns">Informe individual del estudiante</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Curso</label><select id="rite-curso-sel" onchange="cargarAlumnosRite()"></select></div>
+      <div class="field"><label>Alumno/a</label><select id="rite-alumno-sel"></select></div>
+    </div>
+    <button class="btn btn-primary" onclick="generarRite()">Ver RITE del alumno/a →</button>
+  </div>
+  <div id="rite-acciones" style="display:none;margin-bottom:12px" class="no-print">
+    <button class="btn-pdf" onclick="imprimirRite()">🖨 Imprimir / Guardar PDF</button>
+    <button class="btn btn-secondary btn-sm" onclick="generarRite()">↺ Actualizar</button>
+  </div>
+  <div id="rite-preview"></div>
+</div>
+
+<!-- ÁREA DE IMPRESIÓN -->
+<div id="rite-print-area"></div>
+
+<!-- ============ PENDIENTES ============ -->
+<div class="screen" id="s-pendientes">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Alumnos con pendientes</div><div class="ns">Vista por curso</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Curso</label><select id="pend-curso-sel" onchange="mostrarPendientes()"></select></div>
+      <div class="field"><label>Módulo</label>
+        <select id="pend-mod-sel" onchange="mostrarPendientes()">
+          <option value="">Ambos módulos</option>
+          <option value="1">Módulo 1 (1° Cuatrimestre)</option>
+          <option value="2">Módulo 2 (2° Cuatrimestre)</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div id="pend-content"></div>
+</div>
+
+<!-- ============ INFORME POR CURSO ============ -->
+<div class="screen" id="s-informe-curso">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Informe por curso</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field"><label>Seleccioná el curso</label><select id="inf-curso-sel" onchange="mostrarInformeCurso()"></select></div>
+  </div>
+  <div id="inf-curso-content"></div>
+</div>
+
+<!-- ============ VER NOTAS ============ -->
+<div class="screen" id="s-ver-notas">
+  <div class="nav no-print">
+    <button class="back-btn" id="ver-notas-back" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Todas las notas cargadas</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Filtrar por curso</label><select id="vn-curso" onchange="filtrarNotas()"></select></div>
+      <div class="field"><label>Filtrar por materia</label><select id="vn-materia" onchange="filtrarNotas()"></select></div>
+    </div>
+  </div>
+  <div id="vn-content"></div>
+</div>
+
+<!-- ============ ALUMNOS POR CURSO ============ -->
+<div class="screen" id="s-alumnos-curso">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Alumnos por curso</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field"><label>Curso</label><select id="ac-curso" onchange="mostrarAlumnosCurso()"></select></div>
+  </div>
+  <div id="ac-content"></div>
+</div>
+
+<!-- ============ MENÚ DICYT ============ -->
+<div class="screen" id="s-menu-dicyt">
+  <div class="header">
+    <div class="header-logo">RITE</div>
+    <div style="flex:1">
+      <div class="header-title">Profesor Dicyt</div>
+      <div class="header-user" id="dicyt-header-user"></div>
+    </div>
+    <div class="header-ciclo" id="dicyt-header-ciclo">2026</div>
+  </div>
+  <div class="info-box" style="margin-bottom:14px">🔬 Podés cargar la nota del Proyecto de Acción por cuatrimestre y ver todas las notas del CENS.</div>
+  <div class="menu-grid">
+    <button class="menu-card" onclick="go('s-dicyt-proyecto','')">
+      <div class="mc-icon">🚀</div>
+      <div class="mc-title">Proyecto de Acción</div>
+      <div class="mc-desc">Cargar nota por alumno</div>
+    </button>
+    <button class="menu-card" onclick="irVerNotasDicyt()">
+      <div class="mc-icon">🔍</div>
+      <div class="mc-title">Ver todas las notas</div>
+      <div class="mc-desc">Todos los cursos</div>
+    </button>
+  </div>
+  <div style="margin-top:14px;text-align:center">
+    <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
+  </div>
+</div>
+
+<!-- ============ PROYECTO DE ACCIÓN (DICYT) ============ -->
+<div class="screen" id="s-dicyt-proyecto">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-dicyt','')">←</button>
+    <div class="nav-info"><div class="nt">Proyecto de Acción</div><div class="ns">Nota por cuatrimestre · Aprobado con 7 o más</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Cuatrimestre</label>
+        <select id="dicyt-cuatri" onchange="cargarDicytAlumnos()">
+          <option value="1">1° Cuatrimestre</option>
+          <option value="2">2° Cuatrimestre</option>
+        </select>
+      </div>
+      <div class="field"><label>Curso</label><select id="dicyt-curso" onchange="cargarDicytAlumnos()"></select></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-label">Nota del Proyecto de Acción</div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Alumno/a</th><th>Nota (1-10)</th><th>Estado</th></tr></thead>
+        <tbody id="dicyt-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="guardarDicyt()">💾 Guardar notas del Proyecto</button>
+  </div>
+</div>
+
+</div><!-- /app -->
+
+<script>
+'use strict';
+
+// =====================================================================
+// CONFIG API
+// =====================================================================
+const API_URL = 'https://script.google.com/macros/s/AKfycbwxwnbcwOdwfS7GdZ-nGVty3H8dorFOM4p6T-kn_NP5NQ_ZCrnffttUMGYaF4fvWv9H/exec';
+
+async function api(action, body = {}) {
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify({ action, ...body }),
+  });
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Error de API');
+  return json.data;
+}
+
+// =====================================================================
+// DATOS DEL CENS Nº 451
+// =====================================================================
+const CURSOS = [
+  {id:'C001',nombre:'1°B',preceptor:'Denise y Flavia'},
+  {id:'C002',nombre:'2°B',preceptor:'Denise y Flavia'},
+  {id:'C003',nombre:'3°B',preceptor:'Denise y Flavia'},
+  {id:'C004',nombre:'1°E',preceptor:'Denise y Flavia'},
+  {id:'C005',nombre:'2°E',preceptor:'Denise y Flavia'},
+  {id:'C006',nombre:'3°E',preceptor:'Denise y Flavia'},
+  {id:'C007',nombre:'1°A',preceptor:'Romina'},
+  {id:'C008',nombre:'2°A',preceptor:'Romina'},
+  {id:'C009',nombre:'3°A',preceptor:'Romina'},
+  {id:'C010',nombre:'1°G',preceptor:'Omar'},
+  {id:'C011',nombre:'2°G',preceptor:'Omar'},
+  {id:'C012',nombre:'3°G',preceptor:'Omar'},
+  {id:'C013',nombre:'1°C',preceptor:'Matías'},
+  {id:'C014',nombre:'2°C',preceptor:'Matías'},
+  {id:'C015',nombre:'3°C',preceptor:'Matías'},
+  {id:'C016',nombre:'1°D',preceptor:'Walter'},
+  {id:'C017',nombre:'2°D',preceptor:'Walter'},
+  {id:'C018',nombre:'3°D',preceptor:'Walter'},
+  {id:'C019',nombre:'2°F',preceptor:'Walter'},
+  {id:'C020',nombre:'3°F',preceptor:'Walter'},
+  {id:'C021',nombre:'1°I',preceptor:'Juani'},
+  {id:'C022',nombre:'2°I',preceptor:'Juani'},
+  {id:'C023',nombre:'3°I',preceptor:'Juani'},
+  {id:'C024',nombre:'2°M',preceptor:'Juani'},
+  {id:'C025',nombre:'3°M',preceptor:'Juani'},
+  {id:'C026',nombre:'1°J',preceptor:'Adriana'},
+  {id:'C027',nombre:'2°J',preceptor:'Adriana'},
+  {id:'C028',nombre:'3°J',preceptor:'Adriana'},
+  {id:'C029',nombre:'1°K',preceptor:'Adriana'},
+  {id:'C030',nombre:'2°K',preceptor:'Adriana'},
+  {id:'C031',nombre:'3°K',preceptor:'Adriana'},
+  {id:'C032',nombre:'1°H',preceptor:'Adriana'},
+  {id:'C033',nombre:'2°H',preceptor:'Adriana'},
+  {id:'C034',nombre:'3°H',preceptor:'Adriana'},
+];
+
+const ALUMNOS_RAW = [
+  {id:'A001',nombre:'BRUZOS CLARA JAZMIN',curso:'C007',dni:'41566644'},{id:'A002',nombre:'DUARTE MARIA CELESTE',curso:'C007',dni:'39108504'},{id:'A003',nombre:'ESPINOZA JESSICA CELESTE',curso:'C007',dni:'42722003'},{id:'A004',nombre:'SEQUEIRA GRACIELA',curso:'C007',dni:'23046990'},
+  {id:'A005',nombre:'CAMACHO MARIA LAURA',curso:'C008',dni:'47635007'},{id:'A006',nombre:'CRESPO ALVAREZ DORA',curso:'C008',dni:'18875463'},{id:'A007',nombre:'DELGADO ANA LAURA',curso:'C008',dni:'44532099'},{id:'A008',nombre:'FIGUEROA CHRISTIAN',curso:'C008',dni:'35357310'},{id:'A009',nombre:'GUIÑAZU ALEXIS OMAR',curso:'C008',dni:'43309626'},{id:'A010',nombre:'OSORIO JONAS',curso:'C008',dni:'48953438'},{id:'A011',nombre:'PROSTMAN EMILIANO EZEQUIEL',curso:'C008',dni:'36155327'},{id:'A012',nombre:'VILLENEUVE SANTIAGO',curso:'C008',dni:'48026991'},
+  {id:'A013',nombre:'CABREA LUCIANA ELIZABETH',curso:'C009',dni:'27067077'},{id:'A014',nombre:'CHAILE LEAL GERMAN HERNAN',curso:'C009',dni:'48441895'},{id:'A015',nombre:'FUNICELLO EMILIO',curso:'C009',dni:'32637067'},{id:'A016',nombre:'MALDONADO MATIAS',curso:'C009',dni:'41883352'},{id:'A017',nombre:'PUJOL FRANCISCO LUDMILA',curso:'C009',dni:'47410924'},{id:'A018',nombre:'VIÑAS NAHIR BRISA',curso:'C009',dni:'46896432'},
+  {id:'A019',nombre:'VICO DAIANA',curso:'C001',dni:'36781981'},{id:'A021',nombre:'ZURITA GERMAN',curso:'C001',dni:'29982992'},
+  {id:'A022',nombre:'BRIGLIA AXEL EMANUEL',curso:'C002',dni:'42842301'},{id:'A023',nombre:'CAJAL NAHIARA',curso:'C002',dni:'47959511'},{id:'A024',nombre:'FERNANDEZ ADRIAN',curso:'C002',dni:'27628664'},{id:'A025',nombre:'FORT MARCELA',curso:'C002',dni:'28441696'},{id:'A026',nombre:'MIERES CLAUDIA',curso:'C002',dni:'29471050'},{id:'A028',nombre:'RIVERO EZEQUIEL',curso:'C002',dni:'46423978'},{id:'A029',nombre:'SANCHEZ RUBEN',curso:'C002',dni:'35218239'},
+  {id:'A030',nombre:'AMBERTINE AIXA',curso:'C003',dni:'45206301'},{id:'A031',nombre:'BARRETO DIEGO NAHUEL',curso:'C003',dni:'36953690'},{id:'A032',nombre:'CASTIGLIONI CRISTIAN',curso:'C003',dni:'42949182'},{id:'A033',nombre:'FORCADELL EZEQUIEL',curso:'C003',dni:'37905745'},{id:'A034',nombre:'GABRIELLE AGUSTINA',curso:'C003',dni:'47214844'},{id:'A035',nombre:'GABRIELLE MICAELA',curso:'C003',dni:'38142234'},{id:'A036',nombre:'LOPEZ BRIAN OMAR',curso:'C003',dni:'39505528'},{id:'A037',nombre:'MARTINEZ CARLOS RUBEN',curso:'C003',dni:'31913260'},{id:'A038',nombre:'MARTIRES EZEQUIEL',curso:'C003',dni:'42148132'},{id:'A039',nombre:'MENDOZA EMANUEL HAROL',curso:'C003',dni:'39977960'},{id:'A041',nombre:'MUÑOZ SERGIO',curso:'C003',dni:'28792797'},{id:'A042',nombre:'NUÑEZ MATIAS',curso:'C003',dni:'37428976'},{id:'A043',nombre:'PERNIELO FABIAN',curso:'C003',dni:'18142196'},{id:'A044',nombre:'RUIZ CRISTIAN',curso:'C003',dni:'39904375'},{id:'A045',nombre:'SQUAGLIA YANEL',curso:'C003',dni:'52420892'},{id:'A046',nombre:'TORRES YAMILA',curso:'C003',dni:'31822754'},{id:'A047',nombre:'VALLEJOS DAHIANA VALERIA',curso:'C003',dni:'41696332'},{id:'A048',nombre:'VIDELA NAHUEL',curso:'C003',dni:'38862039'},
+  {id:'A049',nombre:'AQUINO ROSA',curso:'C013',dni:'93445513'},{id:'A050',nombre:'AREVALOS LUCIANA',curso:'C013',dni:'48393630'},{id:'A051',nombre:'MORTORO MARCELA',curso:'C013',dni:'20592444'},{id:'A052',nombre:'ORDOÑEZ RITA',curso:'C013',dni:'36083940'},
+  {id:'A053',nombre:'AMEZAGA EMILIANO',curso:'C014',dni:'33088027'},{id:'A054',nombre:'DALIASERA LUIS',curso:'C014',dni:'32230157'},{id:'A055',nombre:'GOMEZ DYLAN',curso:'C014',dni:'48701797'},{id:'A056',nombre:'LUGO BORJA GLADYS',curso:'C014',dni:'94210881'},{id:'A057',nombre:'MINATI MIA',curso:'C014',dni:'95706784'},{id:'A058',nombre:'TORRES CARRASCO DYLAN',curso:'C014',dni:'41912108'},{id:'A059',nombre:'VELAZQUEZ LARA VALENTINA',curso:'C014',dni:'47869065'},
+  {id:'A060',nombre:'ARGUELLO FARIT',curso:'C015',dni:'47795462'},{id:'A061',nombre:'BALMACEDA SERGIO',curso:'C015',dni:'32477893'},{id:'A062',nombre:'BORDA VALENTINA',curso:'C015',dni:'46815405'},{id:'A063',nombre:'PALLERO LUCA',curso:'C015',dni:'48384079'},{id:'A064',nombre:'STRAZZERI ROCIO',curso:'C015',dni:'42075107'},{id:'A065',nombre:'ZANGROSSI PAOLA',curso:'C015',dni:'22493928'},
+  {id:'A066',nombre:'DUARTE MARIA',curso:'C016',dni:'39108504'},{id:'A067',nombre:'GALLO MARIA',curso:'C016',dni:'21939131'},{id:'A068',nombre:'GIL FLORENCIA',curso:'C016',dni:'42192586'},{id:'A069',nombre:'GIL LAUTARO',curso:'C016',dni:'48315829'},{id:'A070',nombre:'GIL SOLEDAD',curso:'C016',dni:'47027786'},{id:'A071',nombre:'GORRA IZA URIEL',curso:'C016',dni:'45779742'},{id:'A072',nombre:'MALDONADO SERGIO',curso:'C016',dni:'17933382'},{id:'A073',nombre:'POPOFF GISELA',curso:'C016',dni:'27939438'},{id:'A074',nombre:'RAMIREZ PRISCILA',curso:'C016',dni:'48465286'},{id:'A075',nombre:'ROA DEL VALLE MYRIAM',curso:'C016',dni:'24764313'},{id:'A076',nombre:'RODRIGUEZ LUDMILA',curso:'C016',dni:'48628896'},{id:'A077',nombre:'ROMERO ABRIL',curso:'C016',dni:'48878526'},{id:'A078',nombre:'SOSA JUAN IGNACIO',curso:'C016',dni:'23812645'},{id:'A079',nombre:'TABORDA SILVANA',curso:'C016',dni:'22572112'},{id:'A080',nombre:'TAVELLA LUIS',curso:'C016',dni:'30749053'},{id:'A081',nombre:'VACCARO MAXIMILIANO',curso:'C016',dni:'40713463'},
+  {id:'A082',nombre:'ACEVEDO ROCIO',curso:'C017',dni:'42684288'},{id:'A083',nombre:'ARAMBURU CLAUDIA',curso:'C017',dni:'17476689'},{id:'A084',nombre:'FERNANDEZ KIARA',curso:'C017',dni:'48842214'},{id:'A085',nombre:'MAURO MARIA',curso:'C017',dni:'23118131'},{id:'A086',nombre:'PEREYRA MARIEL',curso:'C017',dni:'45402026'},{id:'A087',nombre:'ROMAN TOBIAS',curso:'C017',dni:'48037910'},{id:'A088',nombre:'SAUCEDO JUAN',curso:'C017',dni:'26567562'},
+  {id:'A089',nombre:'BERON SOLIS IARA',curso:'C018',dni:'46341660'},{id:'A090',nombre:'CORDOBA MATIAS',curso:'C018',dni:'35603001'},{id:'A091',nombre:'DE LIMA ANALIA',curso:'C018',dni:''},{id:'A092',nombre:'DIAZ MORENA',curso:'C018',dni:'45096674'},{id:'A093',nombre:'FERNANDEZ HERRERA',curso:'C018',dni:''},{id:'A094',nombre:'GRAMAJO MATIAS',curso:'C018',dni:'45067013'},{id:'A095',nombre:'MANCUSSI ANTONELLA',curso:'C018',dni:'42134281'},{id:'A096',nombre:'MANSILLA BRENDA',curso:'C018',dni:'36299147'},{id:'A097',nombre:'MONTENEGRO PAOLA',curso:'C018',dni:'28131693'},{id:'A099',nombre:'PERALTA MARISOL',curso:'C018',dni:'46918447'},{id:'A100',nombre:'RUBINSTEIN MAXIMILIANO',curso:'C018',dni:''},{id:'A101',nombre:'SOSA AGUSTINA',curso:'C018',dni:'45465222'},{id:'A102',nombre:'SOSA SEBASTIAN',curso:'C018',dni:'39274134'},{id:'A103',nombre:'TEPLITZKY ANA',curso:'C018',dni:'43588765'},{id:'A104',nombre:'VARGAS ERNESTO',curso:'C018',dni:'37674217'},{id:'A106',nombre:'VILLALBA NARA',curso:'C018',dni:'48433476'},{id:'A160',nombre:'SUAREZ BRIAN',curso:'C018',dni:'37539438'},
+  {id:'A098',nombre:'OSORES JOSELYN',curso:'C020',dni:'48096791'},{id:'A150',nombre:'ALBORNOZ NICOLE',curso:'C020',dni:'43588738'},{id:'A151',nombre:'AVENDAÑO ADRIANA',curso:'C020',dni:'17193650'},{id:'A152',nombre:'CACERES BERTA',curso:'C020',dni:'92951724'},{id:'A153',nombre:'FELIPE LUKA SANTIAGO',curso:'C020',dni:'48641140'},{id:'A154',nombre:'LIZONDO CASAFUS LEANDRO',curso:'C020',dni:'45519670'},{id:'A155',nombre:'NUÑEZ MARIA',curso:'C020',dni:'20525858'},{id:'A156',nombre:'PAZ MORENA',curso:'C020',dni:'48308749'},{id:'A157',nombre:'ROMERO ANGEL',curso:'C020',dni:'16090677'},{id:'A158',nombre:'ROMERO VERONICA',curso:'C020',dni:'10879040'},{id:'A159',nombre:'ROZAS KIMEY',curso:'C020',dni:'47009660'},{id:'A161',nombre:'VERA BENITEZ CARLA ROMINA',curso:'C020',dni:'31982376'},{id:'A162',nombre:'VIGNOLI DIEGO',curso:'C020',dni:'32617864'},
+  {id:'A107',nombre:'GUTIERREZ MARIO',curso:'C004',dni:'22279373'},{id:'A108',nombre:'PAZ SANDRA ROXANA',curso:'C004',dni:'24730773'},{id:'A109',nombre:'RONCONI VERONICA',curso:'C004',dni:'20695829'},
+  {id:'A110',nombre:'AGUIRRE BRANDOM',curso:'C019',dni:'48701267'},{id:'A111',nombre:'CAMPOS PRISCILA',curso:'C019',dni:'48041702'},{id:'A112',nombre:'CARDOZO VALENTINA',curso:'C019',dni:'47679178'},{id:'A113',nombre:'LOPEZ SANCHEZ FLAVIO',curso:'C019',dni:'48676527'},{id:'A114',nombre:'NARDELLI LEILA',curso:'C019',dni:'38125278'},{id:'A115',nombre:'OJEDA YESICA',curso:'C019',dni:'18877223'},{id:'A116',nombre:'OSORES BIANCA',curso:'C019',dni:'48436532'},{id:'A117',nombre:'OVEJERO BRIAN',curso:'C019',dni:'38125278'},{id:'A118',nombre:'SANDOVAL JUAN',curso:'C019',dni:'24429954'},{id:'A119',nombre:'SUAREZ GONZALO',curso:'C019',dni:'41851907'},{id:'A120',nombre:'TOLABA ESTEBAN',curso:'C019',dni:'47514718'},{id:'A121',nombre:'VIÑAS ADRIAN',curso:'C019',dni:'46682649'},
+  {id:'A122',nombre:'AYALA ARIADNA ABIGAIL',curso:'C006',dni:'41006882'},{id:'A123',nombre:'BARRIONUEVO TOMAS',curso:'C006',dni:'44831974'},{id:'A124',nombre:'BLANCO LUCAS',curso:'C006',dni:'39269335'},{id:'A125',nombre:'CABALLERO JUAN SEBASTIAN',curso:'C006',dni:'43863414'},{id:'A126',nombre:'HERRERA LEONEL',curso:'C006',dni:'50539580'},{id:'A127',nombre:'HERRERA VALENTINA',curso:'C006',dni:'48304601'},{id:'A128',nombre:'LOPEZ LUCAS JAVIER',curso:'C006',dni:'37008026'},{id:'A129',nombre:'MIRANDA ROMINA',curso:'C006',dni:'32358148'},{id:'A130',nombre:'MONTOYA DIEGO',curso:'C006',dni:'33040407'},{id:'A131',nombre:'OLIVERA LUIS ALBERTO',curso:'C006',dni:'47691593'},{id:'A132',nombre:'PERALTA LUCA',curso:'C006',dni:'48096062'},{id:'A133',nombre:'PEREZ JUAN',curso:'C006',dni:''},{id:'A134',nombre:'REICHEL GUADALUPE',curso:'C006',dni:'45206224'},{id:'A135',nombre:'RIOS DAFNE BERENICE',curso:'C006',dni:''},{id:'A136',nombre:'RIVAROLA NAHIARA',curso:'C006',dni:'47433847'},{id:'A137',nombre:'ROMERO MARIANA SOLEDAD',curso:'C006',dni:'33000081'},{id:'A138',nombre:'ROSSI MALMIERCA MARGOT',curso:'C006',dni:'47386610'},{id:'A139',nombre:'ROSSI MARCELO',curso:'C006',dni:'28528452'},{id:'A140',nombre:'SMANIA JUAN IGNACIO',curso:'C006',dni:'46345731'},{id:'A141',nombre:'TORRES DYLAN',curso:'C006',dni:'47880012'},{id:'A142',nombre:'WILLWERTH GONZALO SEBASTIAN',curso:'C006',dni:'47348475'},
+  {id:'A143',nombre:'AGUIAR IGNACIO AGUSTIN',curso:'C005',dni:'48058626'},{id:'A144',nombre:'DUARTE MAURO',curso:'C005',dni:'35560649'},{id:'A145',nombre:'FRAGUEIRO FRANCO',curso:'C005',dni:'43664702'},{id:'A146',nombre:'GONZALEZ DAIARA',curso:'C005',dni:'43107604'},{id:'A147',nombre:'LOTO MARIANA',curso:'C005',dni:'44926253'},{id:'A148',nombre:'MARTINI NICOLAS',curso:'C005',dni:'42192382'},{id:'A149',nombre:'MAYDEE MARICEL',curso:'C005',dni:'25778275'},
+  {id:'A163',nombre:'BASSO PAOLA',curso:'C010',dni:'30103670'},{id:'A164',nombre:'BENITEZ MIRIAM',curso:'C010',dni:'30720417'},{id:'A165',nombre:'NAIMAN SILVIA',curso:'C010',dni:'18318050'},{id:'A166',nombre:'SALOM NORA',curso:'C010',dni:'10801172'},{id:'A167',nombre:'ZARAZO LUIS',curso:'C010',dni:'18508541'},
+  {id:'A168',nombre:'AGUILAR ROCIO',curso:'C032',dni:'45288355'},{id:'A169',nombre:'ARANDA MARIA FLORENCIA',curso:'C032',dni:'42319956'},{id:'A170',nombre:'GIRAD PATRICIA',curso:'C032',dni:''},{id:'A171',nombre:'MENDEZ CRISTINA',curso:'C032',dni:'36140202'},{id:'A172',nombre:'ROJAS ANA GABRIELA',curso:'C032',dni:'33653485'},{id:'A173',nombre:'VILLALBA HAYDEE',curso:'C032',dni:'18154306'},
+  {id:'A174',nombre:'BASOK FLORENCIA',curso:'C021',dni:'48995547'},{id:'A175',nombre:'CARDOZO PAOLA',curso:'C021',dni:'43736169'},{id:'A177',nombre:'DIAZ ERNESTO',curso:'C021',dni:'20151953'},{id:'A178',nombre:'DVYHAILO MIGUEL',curso:'C021',dni:'4980886'},{id:'A179',nombre:'FERREIRA MARIA',curso:'C021',dni:'11604410'},{id:'A180',nombre:'GRIFFITH DAVID',curso:'C021',dni:'44214105'},{id:'A181',nombre:'MEDINA EDUARDO',curso:'C021',dni:'38266822'},{id:'A182',nombre:'MUÑOZ JUAN IGNACIO',curso:'C021',dni:'41130397'},{id:'A183',nombre:'OSELLA MAXIMILIANO',curso:'C021',dni:'39322227'},{id:'A184',nombre:'PAZ SANTIAGO',curso:'C021',dni:'47015432'},{id:'A185',nombre:'SEGOVIA MIGUEL',curso:'C021',dni:'25848072'},{id:'A186',nombre:'TORINO ERIK',curso:'C021',dni:'47229812'},{id:'A187',nombre:'VERDURA SAHAYA',curso:'C021',dni:''},
+  {id:'A188',nombre:'ALE ROSALIA DEL VALLE',curso:'C026',dni:'25375574'},{id:'A189',nombre:'CASANOBA LOURDES',curso:'C026',dni:'92504290'},{id:'A190',nombre:'DIAZ FRANCO',curso:'C026',dni:'47221169'},{id:'A191',nombre:'JUAREZ DANIELA',curso:'C026',dni:'26861940'},{id:'A192',nombre:'PAJON MATIAS',curso:'C026',dni:'32269947'},{id:'A193',nombre:'RAMIREZ MARIA',curso:'C026',dni:'92388903'},{id:'A194',nombre:'RUIZ DIAZ GUIDO',curso:'C026',dni:''},{id:'A195',nombre:'VELAZQUEZ JONATHAN',curso:'C026',dni:'35214384'},
+  {id:'A196',nombre:'AGUILERA SHEILA',curso:'C029',dni:'48377615'},{id:'A197',nombre:'ANDRADA YASMINA',curso:'C029',dni:'50482904'},{id:'A198',nombre:'GUZMAN CLAUDIO',curso:'C029',dni:'44834243'},{id:'A199',nombre:'MEJIA MARTA',curso:'C029',dni:'14017222'},{id:'A200',nombre:'SANDOVAL JULIO',curso:'C029',dni:''},{id:'A201',nombre:'VELAZQUEZ SEBASTIANA',curso:'C029',dni:'38235078'},
+  {id:'A202',nombre:'ABATINO ADRIANA',curso:'C011',dni:'18462288'},{id:'A203',nombre:'ARCE CHRISTIAN',curso:'C011',dni:'44671378'},{id:'A204',nombre:'AYALA VANINA',curso:'C011',dni:'23130657'},{id:'A205',nombre:'BIRMAN BRIAN',curso:'C011',dni:'36825808'},{id:'A206',nombre:'CLAVERIA ROMINA PAOLA',curso:'C011',dni:'28150829'},{id:'A207',nombre:'LEMA JONATHAN',curso:'C011',dni:'43011043'},{id:'A208',nombre:'MALATINO GRACIELA',curso:'C011',dni:'18088958'},{id:'A209',nombre:'MERNES VICTOR',curso:'C011',dni:'27565080'},{id:'A210',nombre:'OJEDA MARGARITA',curso:'C011',dni:'27683938'},{id:'A211',nombre:'RIZZO ROSA',curso:'C011',dni:'5943144'},{id:'A212',nombre:'ROJAS ROSANA',curso:'C011',dni:'22638626'},{id:'A213',nombre:'TRONCOSO PATRICIO',curso:'C011',dni:'43915600'},{id:'A214',nombre:'VANELLA MABEL',curso:'C011',dni:'20972355'},
+  {id:'A215',nombre:'BRITOS AXEL',curso:'C033',dni:''},{id:'A216',nombre:'DAGLIO DANIELA',curso:'C033',dni:'19041955'},{id:'A217',nombre:'GODOY FONTANELLA ALEX',curso:'C033',dni:'47418527'},{id:'A218',nombre:'GONZALEZ TIZIANA',curso:'C033',dni:'57078083'},{id:'A219',nombre:'MORENA ANTONELLA',curso:'C033',dni:'41998301'},{id:'A220',nombre:'NUÑEZ GLADIS NOEMI',curso:'C033',dni:'26498443'},{id:'A221',nombre:'SOSA MERCEDES',curso:'C033',dni:'44748633'},
+  {id:'A222',nombre:'CASTILLO JULIANA',curso:'C022',dni:'46673378'},{id:'A223',nombre:'CESPEDES JESSICA',curso:'C022',dni:'37835756'},{id:'A224',nombre:'GONZALEZ LUCIA',curso:'C022',dni:'37109126'},{id:'A225',nombre:'GUTIERREZ MARIA ELENA',curso:'C022',dni:'23414352'},{id:'A226',nombre:'GUTIERREZ MARIA ROSA',curso:'C022',dni:'31822591'},{id:'A227',nombre:'MONZON SOLEDAD',curso:'C022',dni:'44005153'},{id:'A228',nombre:'MONZON VERONICA',curso:'C022',dni:'29022335'},{id:'A229',nombre:'PALOMEQUE MILAGROS',curso:'C022',dni:'47803882'},{id:'A230',nombre:'PEREZ YANINA',curso:'C022',dni:'43054734'},{id:'A231',nombre:'PIUTRIN ROSA',curso:'C022',dni:'12999246'},{id:'A232',nombre:'SANCHEZ SOLEDAD',curso:'C022',dni:'46439178'},
+  {id:'A233',nombre:'ARANDA DAIANA',curso:'C027',dni:'42674026'},{id:'A234',nombre:'ARANDA LEANDRO',curso:'C027',dni:'39243255'},{id:'A235',nombre:'BENITEZ BRISA',curso:'C027',dni:'48989400'},{id:'A236',nombre:'ACUÑA IARA',curso:'C027',dni:'48020435'},{id:'A237',nombre:'FIGUEROA LAUTARO',curso:'C027',dni:'45525368'},{id:'A238',nombre:'RODRIGUEZ GLADYS',curso:'C027',dni:'14935754'},{id:'A239',nombre:'RODRIGUEZ LAUTARO',curso:'C027',dni:'48096512'},{id:'A240',nombre:'VEGA DAMIAN',curso:'C027',dni:'46896169'},
+  {id:'A241',nombre:'CALLERAME GRACIELA',curso:'C030',dni:'27085582'},{id:'A242',nombre:'CASSASOLA LUCIANO',curso:'C030',dni:'45809216'},{id:'A243',nombre:'ESCOBAR ALEJO',curso:'C030',dni:'48236967'},{id:'A244',nombre:'HURTADO DILAN',curso:'C030',dni:'48436576'},{id:'A245',nombre:'LEDESMA GUADALUPE',curso:'C030',dni:'48628851'},{id:'A246',nombre:'MEDINA FRANCISCO',curso:'C030',dni:'27178639'},{id:'A247',nombre:'MIRANDA CAMILA',curso:'C030',dni:'42905632'},{id:'A248',nombre:'PIETRA ORIANA',curso:'C030',dni:'47945451'},{id:'A249',nombre:'SALGADO MIRANDA',curso:'C030',dni:'47653245'},
+];
+
+const USUARIOS_FIJOS = [
+  {nombre:'Directora',rol:'directivo',pass:'CENS451'},
+  {nombre:'Denise y Flavia',rol:'preceptor',pass:'cens451'},
+  {nombre:'Walter',rol:'preceptor',pass:'terpo'},
+  {nombre:'Juani',rol:'preceptor',pass:'cens451'},
+  {nombre:'Adriana',rol:'preceptor',pass:'cens451'},
+  {nombre:'Matias',rol:'preceptor',pass:'cens451'},
+  {nombre:'Romina',rol:'preceptor',pass:'cens451'},
+  {nombre:'Omar',rol:'preceptor',pass:'cens451'},
+  {nombre:'Dicyt',rol:'dicyt',pass:'dicyt451'},
+];
+
+// =====================================================================
+// STATE
+// =====================================================================
+let sesion = null;
+let datosLocales = {};
+let cicloActual = '2026';
+let materiasCache = [];
+
+// =====================================================================
+// API CALLS CON FALLBACK LOCAL
+// =====================================================================
+async function apiConFallback(action, body = {}, fallback = null) {
+  try {
+    return await api(action, body);
+  } catch (e) {
+    console.warn('API error, usando fallback local:', e);
+    return fallback;
+  }
+}
+
+// =====================================================================
+// HELPERS
+// =====================================================================
+function alumnosDeCurso(cursoId){ return ALUMNOS_RAW.filter(a=>a.curso===cursoId); }
+function cursoNombre(id){ const c=CURSOS.find(c=>c.id===id); return c?c.nombre:id; }
+function alumnoNombre(id){ const a=ALUMNOS_RAW.find(a=>a.id===id); return a?a.nombre:id; }
+function cursoDeAlumno(aid){ const a=ALUMNOS_RAW.find(a=>a.id===aid); return a?a.curso:null; }
+function cursoPreceptor(cid){ const c=CURSOS.find(c=>c.id===cid); return c?c.preceptor:''; }
+
+function keyBimestre(dk){ return `bim_${dk}`; }
+function keyCierre(dk){ return `cierre_${dk}`; }
+function keyContenidos(dk){ return `cont_${dk}`; }
+function keyRecup(dk,turno){ return `rec_${dk}_${turno}`; }
+function keyProyecto(cid,q){ return `proyecto_${cid}_${q}`; }
+function docKey(){ return `${sesion.cursoId}_${sesion.materia.replace(/\s+/g,'_')}_Q${sesion.cuatrimestre}`; }
+
+function estadoBadge(tray){
+  if(!tray||tray==='—') return '<span class="badge badge-sin">—</span>';
+  const m={TEL:'badge-tel',TEP:'badge-tep',TED:'badge-ted'};
+  return `<span class="badge ${m[tray]||'badge-sin'}">${tray}</span>`;
+}
+function notaBadge(nota){
+  if(nota===undefined||nota===null||nota==='') return '<span class="badge badge-sin">—</span>';
+  const n=parseInt(nota);
+  if(n>=7) return `<span class="badge badge-apr">${n}</span>`;
+  return `<span class="badge badge-pen">${n}</span>`;
+}
+function toast(msg, tipo='ok'){
+  const old=document.querySelector('.toast');
+  if(old) old.remove();
+  const t=document.createElement('div');
+  t.className='toast'+(tipo==='err'?' err':'');
+  t.textContent=msg;
+  document.body.appendChild(t);
+  setTimeout(()=>t.remove(),2800);
+}
+function hoy(){
+  return new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function poblaCursoSel(selId, todoOpt=false){
+  const sel=document.getElementById(selId);
+  if(!sel)return;
+  const prev=sel.value;
+  sel.innerHTML='';
+  if(todoOpt) sel.innerHTML='<option value="">— Todos —</option>';
+  CURSOS.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id; o.textContent=c.nombre+' ('+c.preceptor+')';
+    sel.appendChild(o);
+  });
+  if(prev) sel.value=prev;
+}
+function showOverlay(msg='Cargando…'){
+  document.querySelector('.loading-overlay p').textContent=msg;
+  document.getElementById('loading-overlay').style.display='flex';
+}
+function hideOverlay(){
+  document.getElementById('loading-overlay').style.display='none';
+}
+
+// =====================================================================
+// STORAGE LOCAL (fallback si API falla)
+// =====================================================================
+const STORAGE_KEY = 'rite_datos_cens451_v3';
+async function cargarDatosLocales(){
+  try {
+    const s = localStorage.getItem(STORAGE_KEY);
+    if(s) datosLocales = JSON.parse(s);
+  } catch(e){ datosLocales={}; }
+}
+async function guardarDatosLocales(){
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(datosLocales)); } catch(e){}
+}
+
+// =====================================================================
+// GUARDAR EN SHEET (envuelve localStorage + API)
+// =====================================================================
+async function guardarDatos(){
+  await guardarDatosLocales();
+  // Los datos críticos se sincronizan vía las funciones específicas de la API
+}
+
+// =====================================================================
+// SELECTOR HÍBRIDO DE MATERIAS
+// =====================================================================
+let materiaTabActual = 'lista';
+
+function setMateriaTab(tab){
+  materiaTabActual = tab;
+  document.querySelectorAll('.materia-tab').forEach((t,i)=>{
+    t.classList.toggle('active', (i===0&&tab==='lista')||(i===1&&tab==='manual'));
+  });
+  document.getElementById('materia-lista-panel').style.display = tab==='lista'?'':'none';
+  document.getElementById('materia-manual-panel').style.display = tab==='manual'?'':'none';
+}
+
+async function cargarMaterias(){
+  try {
+    materiasCache = await api('getMaterias', {});
+  } catch(e){
+    materiasCache = [];
+  }
+  filtrarMaterias();
+}
+
+function filtrarMaterias(){
+  const modalidad = document.getElementById('mat-filtro-modalidad')?.value || '';
+  const anio      = document.getElementById('mat-filtro-anio')?.value || '';
+  const cuatri    = document.getElementById('mat-filtro-cuatri')?.value || '';
+  let lista = materiasCache;
+  if(modalidad) lista = lista.filter(m=>m.modalidad===modalidad);
+  if(anio)      lista = lista.filter(m=>m.anio===anio);
+  if(cuatri)    lista = lista.filter(m=>m.cuatrimestre===cuatri);
+  const sel = document.getElementById('doc-materia-sel');
+  if(!sel) return;
+  sel.innerHTML = lista.length
+    ? lista.map(m=>`<option value="${m.nombre}">${m.nombre}</option>`).join('')
+    : '<option value="">Sin resultados con esos filtros</option>';
+}
+
+function getMateriaSeleccionada(){
+  if(materiaTabActual==='manual'){
+    return document.getElementById('doc-materia-txt')?.value.trim() || '';
+  } else {
+    return document.getElementById('doc-materia-sel')?.value || '';
+  }
+}
+
+// =====================================================================
+// NAVEGACIÓN
+// =====================================================================
+function go(screenId, arg){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  const s=document.getElementById(screenId);
+  if(s) s.classList.add('active');
+  window.scrollTo(0,0);
+  const handlers={
+    's-login':()=>setupLogin(arg),
+    's-alumno-rite':cargarRiteAlumno,
+    's-menu-doc':setupMenuDoc,
+    's-bimestre':setupBimestre,
+    's-cierre':setupCierre,
+    's-contenidos':setupContenidos,
+    's-recuperaciones':setupRecuperaciones,
+    's-menu-prec':setupMenuPrec,
+    's-rite-gen':setupRiteGen,
+    's-informe-curso':setupInformeCurso,
+    's-ver-notas':setupVerNotas,
+    's-alumnos-curso':setupAlumnosCurso,
+    's-menu-dicyt':setupMenuDicyt,
+    's-dicyt-proyecto':setupDicytProyecto,
+    's-pendientes':setupPendientes,
+  };
+  if(handlers[screenId]) handlers[screenId]();
+}
+
+function logout(){ sesion=null; go('s-inicio',''); }
+
+// =====================================================================
+// LOGIN
+// =====================================================================
+function setupLogin(rol){
+  sesion={rolPendiente:rol};
+  const titulos={
+    alumno:'Ingreso Estudiante',
+    docente:'Ingreso Docente',
+    preceptor:'Ingreso Preceptor/a',
+    dicyt:'Ingreso Profesor Dicyt',
+    directivo:'Ingreso Directivo/a'
+  };
+  document.getElementById('login-title').textContent=titulos[rol]||'Ingreso';
+  document.getElementById('login-alumno-fields').style.display=rol==='alumno'?'':'none';
+  document.getElementById('login-docente-fields').style.display=rol==='docente'?'':'none';
+  document.getElementById('login-otros-fields').style.display=(rol!=='docente'&&rol!=='alumno')?'':'none';
+  document.getElementById('login-error').style.display='none';
+  document.getElementById('login-loading').style.display='none';
+
+  if(rol==='docente'){
+    const sel=document.getElementById('doc-curso');
+    sel.innerHTML='';
+    CURSOS.forEach(c=>{
+      const o=document.createElement('option');
+      o.value=c.id; o.textContent=c.nombre;
+      sel.appendChild(o);
+    });
+    if(materiasCache.length===0) cargarMaterias();
+    else filtrarMaterias();
+  }
+}
+
+async function doLogin(){
+  document.getElementById('login-error').style.display='none';
+  document.getElementById('login-loading').style.display='none';
+  const rol=sesion.rolPendiente;
+
+  if(rol==='alumno'){
+    const dni=document.getElementById('alu-dni').value.trim();
+    if(!dni){ toast('Ingresá tu DNI','err'); return; }
+    const alumno=ALUMNOS_RAW.find(a=>a.dni&&a.dni===dni);
+    // Como los DNIs no están cargados aún, buscamos en la hoja inscripción del sheet original
+    // Por ahora: validación permisiva — cualquier DNI válido de 7-8 dígitos accede
+    if(!/^\d{7,8}$/.test(dni)){ toast('DNI inválido','err'); return; }
+    document.getElementById('login-loading').style.display='';
+    // Buscar alumno por DNI en el sheet de inscripción
+    try {
+      sesion={rol:'alumno',dni};
+      // Intentamos encontrar el alumno en ALUMNOS_RAW por dni
+      // En esta versión, si el alumno está registrado con DNI, lo encontramos
+      // Si no, mostramos todos los que matcheen
+      go('s-alumno-rite','');
+    } catch(e){
+      document.getElementById('login-loading').style.display='none';
+      document.getElementById('login-error').style.display='';
+      document.getElementById('login-error').textContent='⚠ No encontramos tu DNI. Verificá el número ingresado.';
+    }
+    return;
+  }
+
+  if(rol==='docente'){
+    const nombre=document.getElementById('doc-nombre').value.trim();
+    const apellido=document.getElementById('doc-apellido').value.trim();
+    const dni=document.getElementById('doc-dni').value.trim();
+    const cursoId=document.getElementById('doc-curso').value;
+    const materia=getMateriaSeleccionada();
+    const cuatrimestre=parseInt(document.getElementById('doc-cuatrimestre').value);
+    if(!nombre||!apellido||!dni){ toast('Completá nombre, apellido y DNI','err'); return; }
+    if(!materia){ toast('Seleccioná o escribí una materia','err'); return; }
+    document.getElementById('login-loading').style.display='';
+    try {
+      const result=await api('registrarDocente',{dni,nombre,apellido,email:''});
+      sesion={rol:'docente',nombre:`${nombre} ${apellido}`,dni,materia,cursoId,cuatrimestre};
+      document.getElementById('login-loading').style.display='none';
+      go('s-menu-doc','');
+    } catch(e){
+      document.getElementById('login-loading').style.display='none';
+      // Fallback: igual dejamos ingresar
+      sesion={rol:'docente',nombre:`${nombre} ${apellido}`,dni,materia,cursoId,cuatrimestre};
+      go('s-menu-doc','');
+    }
+    return;
+  }
+
+  // Otros roles
+  const nombre=document.getElementById('ot-nombre').value.trim();
+  const pass=document.getElementById('ot-pass').value;
+  const user=USUARIOS_FIJOS.find(u=>u.rol===rol&&u.pass===pass);
+  if(!user){ document.getElementById('login-error').style.display=''; return; }
+  sesion={rol,nombre:nombre||user.nombre};
+  if(rol==='preceptor'||rol==='directivo') go('s-menu-prec','');
+  else if(rol==='dicyt') go('s-menu-dicyt','');
+}
+
+// =====================================================================
+// ALUMNO — MI RITE
+// =====================================================================
+async function cargarRiteAlumno(){
+  const dni=sesion.dni;
+  document.getElementById('alu-header-user').textContent=`DNI: ${dni}`;
+  document.getElementById('alu-header-ciclo').textContent=cicloActual;
+  document.getElementById('alu-acciones').style.display='none';
+  document.getElementById('alu-rite-content').innerHTML='<div class="loading"><div class="spinner"></div>Buscando tu RITE…</div>';
+
+  // Buscar el alumno en ALUMNOS_RAW por DNI
+  // Como los DNIs están vacíos en el array actual, mostramos un mensaje amigable
+  // En el futuro, cuando se carguen los DNIs desde el sheet, esto funcionará automáticamente
+  const alumno=ALUMNOS_RAW.find(a=>a.dni&&a.dni.trim()===dni);
+
+  if(!alumno){
+    document.getElementById('alu-rite-content').innerHTML=`
+      <div class="alumno-rite-card">
+        <div style="font-size:40px;margin-bottom:10px">📋</div>
+        <div class="arc-nombre">DNI ${dni}</div>
+        <div class="arc-ciclo">${cicloActual}</div>
+      </div>
+      <div class="warn-box">
+        ℹ Tu RITE aún no está disponible en el sistema o tu DNI no fue registrado.<br><br>
+        Consultá con el/la preceptor/a para que vinculen tu DNI a tu ficha de alumno.
+      </div>`;
+    return;
+  }
+
+  const curso=CURSOS.find(c=>c.id===alumno.curso);
+  document.getElementById('alu-header-user').textContent=alumno.nombre;
+
+  try {
+    const data=await api('getRiteAlumno',{ciclo:cicloActual,alumnoId:alumno.id,cursoId:alumno.curso});
+    renderRiteAlumnoView(alumno,curso,data);
+    document.getElementById('alu-acciones').style.display='';
+  } catch(e){
+    // Fallback a datos locales
+    generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content');
+    document.getElementById('alu-acciones').style.display='';
+  }
+}
+
+function renderRiteAlumnoView(alumno,curso,data){
+  // Construir vista del RITE con datos del sheet
+  const el=document.getElementById('alu-rite-content');
+  el.innerHTML=`
+    <div class="alumno-rite-card">
+      <div class="arc-nombre">${alumno.nombre}</div>
+      <div class="arc-curso">Curso: ${curso?curso.nombre:'—'} · Preceptor/a: ${curso?curso.preceptor:'—'}</div>
+      <div class="arc-ciclo">Ciclo Lectivo ${cicloActual}</div>
+    </div>
+  `;
+  generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content',true);
+}
+
+// =====================================================================
+// MENÚ DOCENTE
+// =====================================================================
+function setupMenuDoc(){
+  const c=CURSOS.find(c=>c.id===sesion.cursoId)||{nombre:''};
+  document.getElementById('doc-header-title').textContent=`${sesion.materia} · ${c.nombre}`;
+  document.getElementById('doc-header-user').textContent=sesion.nombre;
+  document.getElementById('doc-header-ciclo').textContent=cicloActual;
+  document.getElementById('btn-bim-title').textContent=`${sesion.cuatrimestre}° Bimestre`;
+  document.getElementById('btn-cierre-title').textContent=`Cierre del ${sesion.cuatrimestre}° Cuatrimestre`;
+  const alumnos=alumnosDeCurso(sesion.cursoId);
+  const bim=datosLocales[keyBimestre(docKey())]||{};
+  let tel=0,tep=0,ted=0,sin=0;
+  alumnos.forEach(a=>{
+    const t=bim[a.id]?.tray;
+    if(t==='TEL') tel++;
+    else if(t==='TEP') tep++;
+    else if(t==='TED') ted++;
+    else sin++;
+  });
+  document.getElementById('doc-stats').innerHTML=`
+    <div class="stat"><div class="sn">${alumnos.length}</div><div class="sl">Alumnos</div></div>
+    <div class="stat verde"><div class="sn">${tel}</div><div class="sl">TEL</div></div>
+    <div class="stat amarillo"><div class="sn">${tep}</div><div class="sl">TEP</div></div>
+    <div class="stat rojo"><div class="sn">${ted}</div><div class="sl">TED</div></div>
+  `;
+}
+
+// =====================================================================
+// BIMESTRE
+// =====================================================================
+function setupBimestre(){
+  const q=sesion.cuatrimestre;
+  document.getElementById('bim-title').textContent=`${q}° Bimestre`;
+  document.getElementById('bim-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const bim=datosLocales[keyBimestre(docKey())]||{};
+  document.getElementById('bim-tbody').innerHTML=alumnos.map(a=>{
+    const val=bim[a.id]?.tray||'TEL';
+    return `<tr>
+      <td class="td-nombre">${a.nombre}</td>
+      <td><select class="nota-sel" data-id="${a.id}">
+        <option value="TEL" ${val==='TEL'?'selected':''}>TEL — Lograda</option>
+        <option value="TEP" ${val==='TEP'?'selected':''}>TEP — En Proceso</option>
+        <option value="TED" ${val==='TED'?'selected':''}>TED — Discontinua</option>
+      </select></td>
+    </tr>`;
+  }).join('');
+}
+
+async function guardarBimestre(){
+  const selects=document.querySelectorAll('#bim-tbody .nota-sel');
+  const data={};
+  selects.forEach(s=>{ data[s.dataset.id]={tray:s.value}; });
+  datosLocales[keyBimestre(docKey())]=data;
+  await guardarDatos();
+
+  // Sincronizar con API
+  const datos=Object.entries(data).map(([alumnoId,v])=>({alumnoId,trayectoria:v.tray}));
+  try {
+    await api('guardarBimestreBloque',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,
+      bimestre:sesion.cuatrimestre,datos
+    });
+    toast('Trayectorias guardadas ✓');
+  } catch(e){
+    toast('Guardado local ✓ (sin conexión)');
+  }
+  setupMenuDoc();
+}
+
+// =====================================================================
+// CIERRE
+// =====================================================================
+function setupCierre(){
+  const q=sesion.cuatrimestre;
+  document.getElementById('cierre-title').textContent=`Cierre del ${q}° cuatrimestre`;
+  document.getElementById('cierre-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  const bim=datosLocales[keyBimestre(docKey())]||{};
+  const bimCargado=Object.keys(bim).length>0;
+  document.getElementById('cierre-sin-bim').style.display=bimCargado?'none':'';
+  const conts=datosLocales[keyContenidos(docKey())]||[];
+  document.getElementById('cierre-sin-cont').style.display=conts.length?'none':'';
+  const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const cierre=datosLocales[keyCierre(docKey())]||{};
+  document.getElementById('cierre-tbody').innerHTML=alumnos.map(a=>{
+    const nota=cierre[a.id]?.nota||'';
+    return `<tr>
+      <td class="td-nombre" style="cursor:pointer;color:var(--verde)" onclick="abrirContAlumno('${a.id}','${a.nombre.replace(/'/g,"\\'")}')">
+        ${a.nombre} ${conts.length?'<span style="font-size:10px;opacity:.5">▼</span>':''}
+      </td>
+      <td><input class="nota-num" type="number" min="1" max="10" value="${nota}" data-id="${a.id}" oninput="actualizarEstadoCierre(this)"></td>
+      <td id="estado-${a.id}">${nota?notaBadge(nota):'<span class="badge badge-sin">—</span>'}</td>
+    </tr>`;
+  }).join('');
+  if(conts.length>0) document.getElementById('cierre-cont-section').style.display='';
+}
+
+function actualizarEstadoCierre(inp){
+  document.getElementById('estado-'+inp.dataset.id).innerHTML=inp.value?notaBadge(inp.value):'<span class="badge badge-sin">—</span>';
+}
+
+let alumnoContAbierto=null;
+function abrirContAlumno(aid,anombre){
+  alumnoContAbierto=aid;
+  const conts=datosLocales[keyContenidos(docKey())]||[];
+  const cierre=datosLocales[keyCierre(docKey())]||{};
+  const marcados=cierre[aid]?.contenidos||{};
+  const list=document.getElementById('cierre-cont-list');
+  if(!conts.length){ list.innerHTML='<div class="empty">Sin contenidos cargados.</div>'; return; }
+  list.innerHTML=`<div class="card" style="border-color:var(--verde)">
+    <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--verde)">📋 ${anombre}</div>`+
+    conts.map((c,i)=>`
+      <div class="cont-item">
+        <span>${c}</span>
+        <div class="cont-checks">
+          <label><input type="radio" name="cont_${aid}_${i}" value="alcanzado" ${marcados[i]==='alcanzado'?'checked':''}> Alcanzado</label>
+          <label><input type="radio" name="cont_${aid}_${i}" value="pendiente" ${marcados[i]==='pendiente'?'checked':''}> Pendiente</label>
+        </div>
+      </div>`).join('')+
+    '</div>';
+  list.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+async function guardarCierre(){
+  const inputs=document.querySelectorAll('#cierre-tbody .nota-num');
+  const conts=datosLocales[keyContenidos(docKey())]||[];
+  const cierre=datosLocales[keyCierre(docKey())]||{};
+  inputs.forEach(inp=>{
+    const aid=inp.dataset.id;
+    const nota=inp.value?parseInt(inp.value):null;
+    if(!cierre[aid]) cierre[aid]={contenidos:{}};
+    cierre[aid].nota=nota;
+    conts.forEach((_,i)=>{
+      const sel=document.querySelector(`input[name="cont_${aid}_${i}"]:checked`);
+      cierre[aid].contenidos[i]=sel?sel.value:'pendiente';
+    });
+  });
+  datosLocales[keyCierre(docKey())]=cierre;
+  await guardarDatos();
+
+  // Sincronizar cierres con API
+  const datos=Object.entries(cierre).map(([alumnoId,d])=>({alumnoId,nota:d.nota}));
+  try {
+    await api('guardarCierreBloque',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,datos
+    });
+    // Sincronizar contenidos
+    await api('guardarContenidos',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,
+      contenidos:conts
+    });
+    toast('Cierre guardado ✓');
+  } catch(e){
+    toast('Guardado local ✓ (sin conexión)');
+  }
+}
+
+// =====================================================================
+// CONTENIDOS
+// =====================================================================
+function setupContenidos(){
+  document.getElementById('cont-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  document.getElementById('cont-q-label').textContent=`Contenidos del ${sesion.cuatrimestre}° cuatrimestre`;
+  renderChips();
+}
+function renderChips(){
+  const conts=datosLocales[keyContenidos(docKey())]||[];
+  document.getElementById('cont-chips').innerHTML=conts.map((c,i)=>
+    `<div class="chip">${c}<span class="chip-x" onclick="quitarContenido(${i})">×</span></div>`
+  ).join('')||'<span style="font-size:12px;color:var(--texto3)">Sin contenidos aún.</span>';
+}
+function agregarContenido(){
+  const inp=document.getElementById('cont-input');
+  const val=inp.value.trim();
+  if(!val) return;
+  const k=keyContenidos(docKey());
+  if(!datosLocales[k]) datosLocales[k]=[];
+  if(datosLocales[k].length>=15){ toast('Máximo 15 contenidos','err'); return; }
+  datosLocales[k].push(val);
+  inp.value=''; renderChips();
+}
+function quitarContenido(idx){
+  datosLocales[keyContenidos(docKey())].splice(idx,1);
+  renderChips();
+}
+async function guardarContenidos(){
+  await guardarDatos();
+  const conts=datosLocales[keyContenidos(docKey())]||[];
+  try {
+    await api('guardarContenidos',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,contenidos:conts
+    });
+    toast('Contenidos guardados ✓');
+  } catch(e){
+    toast('Guardado local ✓');
+  }
+}
+
+// =====================================================================
+// RECUPERACIONES
+// =====================================================================
+function setupRecuperaciones(){
+  document.getElementById('rec-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  const q=sesion.cuatrimestre;
+  const cierre=datosLocales[keyCierre(docKey())]||{};
+  const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const desaprobados=alumnos.filter(a=>{
+    const n=cierre[a.id]?.nota;
+    return n!==null&&n!==undefined&&parseInt(n)<7;
+  });
+  const turnos=q===1
+    ?[{key:'agosto',label:`Turno Agosto ${cicloActual}`},{key:'diciembre',label:`Turno Diciembre ${cicloActual}`},{key:'febrero',label:`Turno Febrero ${parseInt(cicloActual)+1}`}]
+    :[{key:'diciembre',label:`Turno Diciembre ${cicloActual}`},{key:'febrero',label:`Turno Febrero ${parseInt(cicloActual)+1}`}];
+  let html='';
+  if(desaprobados.length===0){
+    html='<div class="ok-box">✓ Todos los alumnos aprobaron. Sin instancias de recuperación.</div>';
+  } else {
+    turnos.forEach((turno,ti)=>{
+      const habilitados=desaprobados.filter(a=>{
+        for(let t2=0;t2<ti;t2++){
+          const nt=datosLocales[keyRecup(docKey(),turnos[t2].key)]?.[a.id]?.nota;
+          if(nt&&parseInt(nt)>=7) return false;
+        }
+        return true;
+      });
+      const recData=datosLocales[keyRecup(docKey(),turno.key)]||{};
+      html+=`<div class="card"><div class="card-title">${turno.label}</div>`;
+      if(!habilitados.length){
+        html+='<div class="ok-box">✓ Sin alumnos pendientes en este turno.</div>';
+      } else {
+        html+=`<div class="tabla-wrap"><table>
+          <thead><tr><th>Alumno/a</th><th>Nota</th><th>Estado</th></tr></thead>
+          <tbody>`;
+        habilitados.forEach(a=>{
+          const nota=recData[a.id]?.nota||'';
+          html+=`<tr>
+            <td class="td-nombre">${a.nombre}</td>
+            <td><input class="nota-num" type="number" min="1" max="10" value="${nota}"
+              data-id="${a.id}" data-turno="${turno.key}"
+              oninput="actualizarRecup(this)"></td>
+            <td id="rec-estado-${turno.key}-${a.id}">${nota?notaBadge(nota):'<span class="badge badge-sin">—</span>'}</td>
+          </tr>`;
+        });
+        html+=`</tbody></table></div>
+        <button class="btn btn-primary" style="margin-top:12px" onclick="guardarRecup('${turno.key}')">💾 Guardar ${turno.label}</button>`;
+      }
+      html+='</div>';
+    });
+  }
+  document.getElementById('rec-content').innerHTML=html;
+}
+function actualizarRecup(inp){
+  const id=`rec-estado-${inp.dataset.turno}-${inp.dataset.id}`;
+  const el=document.getElementById(id);
+  if(el) el.innerHTML=inp.value?notaBadge(inp.value):'<span class="badge badge-sin">—</span>';
+}
+async function guardarRecup(turno){
+  const inputs=document.querySelectorAll(`[data-turno="${turno}"]`);
+  const data={};
+  inputs.forEach(inp=>{ data[inp.dataset.id]={nota:inp.value?parseInt(inp.value):null}; });
+  datosLocales[keyRecup(docKey(),turno)]=data;
+  await guardarDatos();
+  const datos=Object.entries(data).map(([alumnoId,d])=>({alumnoId,nota:d.nota}));
+  try {
+    await api('guardarRecupBloque',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,turno,datos
+    });
+    toast(`${turno.charAt(0).toUpperCase()+turno.slice(1)} guardado ✓`);
+  } catch(e){
+    toast('Guardado local ✓');
+  }
+  setupRecuperaciones();
+}
+
+// =====================================================================
+// MENÚ PRECEPTOR
+// =====================================================================
+function setupMenuPrec(){
+  document.getElementById('prec-header-title').textContent=sesion.rol==='directivo'?'Directivo/a':'Preceptoría';
+  document.getElementById('prec-header-user').textContent=sesion.nombre;
+  document.getElementById('prec-header-ciclo').textContent=cicloActual;
+  const total=ALUMNOS_RAW.length;
+  let aprob=0,pend=0,notas=0;
+  Object.keys(datosLocales).forEach(k=>{
+    if(!k.startsWith('cierre_')) return;
+    Object.values(datosLocales[k]).forEach(v=>{
+      if(v.nota!==null&&v.nota!==undefined){ notas++; if(parseInt(v.nota)>=7)aprob++; else pend++; }
+    });
+  });
+  document.getElementById('prec-stats').innerHTML=`
+    <div class="stat"><div class="sn">${total}</div><div class="sl">Alumnos</div></div>
+    <div class="stat verde"><div class="sn">${aprob}</div><div class="sl">Aprobados</div></div>
+    <div class="stat rojo"><div class="sn">${pend}</div><div class="sl">Pendientes</div></div>
+    <div class="stat azul"><div class="sn">${CURSOS.length}</div><div class="sl">Cursos</div></div>
+  `;
+}
+
+// =====================================================================
+// PENDIENTES
+// =====================================================================
+function setupPendientes(){
+  poblaCursoSel('pend-curso-sel');
+  mostrarPendientes();
+}
+function mostrarPendientes(){
+  const cid=document.getElementById('pend-curso-sel').value;
+  const modFiltro=document.getElementById('pend-mod-sel').value;
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const resultado=[];
+  alumnos.forEach(a=>{
+    const pendMats=[];
+    Object.keys(datosLocales).forEach(k=>{
+      if(!k.startsWith('cierre_')) return;
+      const sin=k.replace('cierre_','');
+      const partes=sin.split('_');
+      if(partes[0]!==cid) return;
+      const qPart=partes[partes.length-1];
+      const q=parseInt(qPart.replace('Q',''));
+      if(modFiltro&&q!==parseInt(modFiltro)) return;
+      const materia=partes.slice(1,-1).join(' ');
+      const d=datosLocales[k][a.id];
+      if(!d||d.nota===null||d.nota===undefined) return;
+      if(parseInt(d.nota)<7){
+        const turnos=q===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
+        let recupero=false;
+        for(const t of turnos){
+          const rn=datosLocales[`rec_${sin}_${t}`]?.[a.id]?.nota;
+          if(rn&&parseInt(rn)>=7){ recupero=true; break; }
+        }
+        if(!recupero) pendMats.push({materia,q,nota:d.nota});
+      }
+    });
+    if(pendMats.length) resultado.push({alumno:a,pendMats});
+  });
+  const el=document.getElementById('pend-content');
+  if(!resultado.length){
+    const modTxt = modFiltro ? ' (Módulo ' + modFiltro + ')' : '';
+    el.innerHTML='<div class="ok-box">\u2713 No hay alumnos con materias pendientes en este curso' + modTxt + '.</div>';
+    return;
+  }
+  el.innerHTML=resultado.map(r=>`
+    <div class="pend-alumno">
+      <div class="pa-nombre">⚠ ${r.alumno.nombre} — ${r.pendMats.length} materia${r.pendMats.length>1?'s':''} pendiente${r.pendMats.length>1?'s':''}</div>
+      ${r.pendMats.map(m=>`<div class="pa-mat">· ${m.materia} (Mód. ${m.q}) — Nota: ${m.nota}</div>`).join('')}
+    </div>
+  `).join('');
+}
+
+// =====================================================================
+// GENERAR RITE (preceptor)
+// =====================================================================
+function setupRiteGen(){
+  poblaCursoSel('rite-curso-sel');
+  cargarAlumnosRite();
+  document.getElementById('rite-preview').innerHTML='';
+  document.getElementById('rite-acciones').style.display='none';
+  document.getElementById('rite-print-area').innerHTML='';
+}
+function cargarAlumnosRite(){
+  const cid=document.getElementById('rite-curso-sel').value;
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  document.getElementById('rite-alumno-sel').innerHTML=
+    alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+}
+function generarRite(){
+  const cid=document.getElementById('rite-curso-sel').value;
+  const aid=document.getElementById('rite-alumno-sel').value;
+  generarRiteParaAlumno(cid,aid,'rite-preview');
+  document.getElementById('rite-acciones').style.display='';
+}
+
+// =====================================================================
+// CORE RITE GENERATOR (compartido por preceptor y alumno)
+// =====================================================================
+function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
+  const curso=CURSOS.find(c=>c.id===cid);
+  const alumno=ALUMNOS_RAW.find(a=>a.id===aid);
+  if(!alumno||!curso){ toast('Alumno no encontrado','err'); return; }
+
+  const materiasAlumno=[];
+  Object.keys(datosLocales).forEach(k=>{
+    if(!k.startsWith('cierre_')) return;
+    const cierre=datosLocales[k];
+    if(!cierre[aid]) return;
+    const sin=k.replace('cierre_','');
+    const partes=sin.split('_');
+    const qPart=partes[partes.length-1];
+    const cuatri=parseInt(qPart.replace('Q',''));
+    if(partes[0]!==cid) return;
+    const materia=partes.slice(1,-1).join(' ');
+    const d=cierre[aid];
+    const nota=d.nota;
+    const tray=(datosLocales[`bim_${sin}`]||{})[aid]?.tray||'—';
+    const conts=datosLocales[`cont_${sin}`]||[];
+    const contData=d.contenidos||{};
+    const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
+    const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]);
+    const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
+    const recNotas=turnos.map(t=>{
+      const rk=`rec_${sin}_${t}`;
+      return (datosLocales[rk]||{})[aid]?.nota;
+    });
+    materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
+  });
+
+  const proy1=((datosLocales[keyProyecto(cid,1)]||{})[aid]||{}).nota;
+  const proy2=((datosLocales[keyProyecto(cid,2)]||{})[aid]||{}).nota;
+  const mat1=materiasAlumno.filter(m=>m.cuatri===1);
+  const mat2=materiasAlumno.filter(m=>m.cuatri===2);
+
+  function calcModulo(mats,proyNota){
+    if(!mats.length) return {tray:'—',estado:'SIN DATOS'};
+    const pendientes=mats.filter(m=>m.nota&&parseInt(m.nota)<7);
+    const proyAprobado=proyNota===undefined||proyNota===null||(parseInt(proyNota)>=7);
+    if(!pendientes.length&&proyAprobado) return {tray:'TEL',estado:'APROBADO'};
+    const conTED=mats.some(m=>m.tray==='TED');
+    if(conTED) return {tray:'TED',estado:'PENDIENTE'};
+    return {tray:'TEP',estado:'PENDIENTE'};
+  }
+  const mod1=calcModulo(mat1,proy1);
+  const mod2=calcModulo(mat2,proy2);
+
+  function tablaModuloPreview(mats,q,proyNota){
+    if(!mats.length) return '<div class="empty" style="font-size:12px;padding:16px">Sin notas cargadas aún.</div>';
+    const ths=q===1
+      ?'<th>T.B.</th><th>Nota</th><th>Ago.</th><th>Dic.</th><th>Feb.</th><th>Estado</th>'
+      :'<th>T.B.</th><th>Nota</th><th>Dic.</th><th>Feb.</th><th>Estado</th>';
+    return `<div class="tabla-wrap"><table class="rite-table">
+      <thead><tr><th>Materia</th>${ths}</tr></thead>
+      <tbody>
+        ${mats.map(m=>{
+          const apr=m.nota&&parseInt(m.nota)>=7;
+          const recTds=m.recNotas.map(rn=>
+            `<td>${rn!==null&&rn!==undefined?notaBadge(rn):'<span class="badge badge-sin">—</span>'}</td>`).join('');
+          return `<tr>
+            <td>${m.materia}</td>
+            <td>${estadoBadge(m.tray)}</td>
+            <td>${notaBadge(m.nota)}</td>
+            ${recTds}
+            <td>${m.nota?(apr?'<span class="badge badge-apr">Aprobado</span>':'<span class="badge badge-pen">Pendiente</span>'):'<span class="badge badge-sin">—</span>'}</td>
+          </tr>`;
+        }).join('')}
+        <tr style="background:var(--gris)">
+          <td><b>Proyecto de Acción</b></td>
+          <td colspan="${q===1?4:3}"></td>
+          <td>${proy1!==null&&proy1!==undefined?notaBadge(q===1?proy1:proy2):'<span class="badge badge-sin">—</span>'}</td>
+          <td>${(q===1?proy1:proy2)!==null&&(q===1?proy1:proy2)!==undefined?(parseInt(q===1?proy1:proy2)>=7?'<span class="badge badge-apr">Aprobado</span>':'<span class="badge badge-pen">Pendiente</span>'):'<span class="badge badge-sin">—</span>'}</td>
+        </tr>
+      </tbody>
+    </table></div>`;
+  }
+
+  function contBoxPreview(mats){
+    return mats.filter(m=>m.alcanzados.length||m.pendientes.length).map(m=>`
+      <div class="rite-cont-box">
+        <b>${m.materia}</b><br>
+        ${m.alcanzados.length?`<span style="color:var(--verde)">✓ Alcanzados: </span>${m.alcanzados.join(' · ')}`:''}
+        ${m.alcanzados.length&&m.pendientes.length?'<br>':''}
+        ${m.pendientes.length?`<span style="color:var(--rojo)">⚠ Pendientes: </span>${m.pendientes.join(' · ')}`:''}
+      </div>`).join('');
+  }
+
+  function estadoMod(mod){
+    const cls=mod.estado==='APROBADO'?'badge-apr':'badge-pen';
+    const tCls=mod.tray==='TEL'?'badge-tel':mod.tray==='TEP'?'badge-tep':'badge-ted';
+    return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px">
+      <span class="badge ${tCls}">${mod.tray}</span>
+      <span class="badge ${cls}">Módulo ${mod.estado}</span>
+    </div>`;
+  }
+
+  const previewHTML=`
+    <div class="rite-doc">
+      <div class="rite-header-doc">
+        <div class="rite-titulo">RITE ${cicloActual} · Registro Individual de Trayectoria Educativa</div>
+        <div class="rite-sub">CENS Nº 451 · La Matanza</div>
+      </div>
+      <div class="rite-alumno-box">
+        <p>${alumno.nombre}</p>
+        <span>Curso: ${curso.nombre} &nbsp;·&nbsp; Preceptor/a: ${curso.preceptor} &nbsp;·&nbsp; Año: ${cicloActual}</span>
+      </div>
+      <div class="rite-section">Módulo 1 — 1° Cuatrimestre</div>
+      ${tablaModuloPreview(mat1,1,proy1)}
+      ${estadoMod(mod1)}
+      ${mat1.length?`<div class="rite-section" style="font-size:10px">Saberes — 1° Cuatrimestre</div>${contBoxPreview(mat1)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
+      <div class="rite-section" style="margin-top:12px">Módulo 2 — 2° Cuatrimestre</div>
+      ${tablaModuloPreview(mat2,2,proy2)}
+      ${estadoMod(mod2)}
+      ${mat2.length?`<div class="rite-section" style="font-size:10px">Saberes — 2° Cuatrimestre</div>${contBoxPreview(mat2)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
+      <div style="margin-top:12px;font-size:10px;color:var(--texto3);border-top:1px solid var(--borde);padding-top:8px">
+        Generado: ${hoy()} · CENS Nº 451 · La Matanza · Sistema RITE ${cicloActual}
+      </div>
+    </div>`;
+
+  const contenedor=document.getElementById(contenedorId);
+  if(append) contenedor.innerHTML+=previewHTML;
+  else contenedor.innerHTML=previewHTML;
+
+  // Área de impresión
+  function trayLabel(t){
+    return t==='TEL'?'Trayectoria Educativa Lograda':t==='TEP'?'Trayectoria Educativa en Proceso':t==='TED'?'Trayectoria Educativa Discontinua':'—';
+  }
+  function clsTray(t){ return t==='TEL'?'tel':t==='TEP'?'tep':t==='TED'?'ted':''; }
+
+  function tablaPrint(mats,q,proyNota){
+    if(!mats.length) return '<p style="font-size:9px;color:#999;padding:4px">Sin datos cargados.</p>';
+    const ths=q===1
+      ?'<th>1° Bimestre</th><th>Nota Final</th><th>Estado</th><th>Turn. Agosto</th><th>Turn. Dic.</th><th>Turn. Feb.</th>'
+      :'<th>2° Bimestre</th><th>Nota Final</th><th>Estado</th><th>Turn. Dic.</th><th>Turn. Feb.</th>';
+    return `<table>
+      <thead><tr><th style="text-align:left;width:28%">Materia</th>${ths}</tr></thead>
+      <tbody>
+        ${mats.map(m=>{
+          const n=m.nota?parseInt(m.nota):null;
+          const apr=n&&n>=7;
+          const recTds=m.recNotas.map((rn)=>{
+            if(rn===null||rn===undefined) return '<td>—</td>';
+            const rn2=parseInt(rn);
+            return `<td style="color:${rn2>=7?'#1a5c3a':'#c62828'};font-weight:700">${rn2}</td>`;
+          }).join('');
+          const cls=clsTray(m.tray);
+          return `<tr>
+            <td class="left">${m.materia}</td>
+            <td><span class="${cls}">${m.tray||'—'}</span></td>
+            <td style="color:${apr?'#1a5c3a':'#c62828'};font-weight:700">${n||'—'}</td>
+            <td class="${apr?'apr':'pen'}">${n?(apr?'Aprobado':'Pendiente'):'—'}</td>
+            ${recTds}
+          </tr>`;
+        }).join('')}
+        <tr style="background:#f5f5f5">
+          <td class="left" style="font-weight:700">Proyecto de Acción</td>
+          <td colspan="2" style="text-align:center;font-style:italic;font-size:8px">Nota del Proyecto</td>
+          <td style="color:${proyNota!==null&&proyNota!==undefined&&parseInt(proyNota)>=7?'#1a5c3a':'#c62828'};font-weight:700">
+            ${proyNota!==null&&proyNota!==undefined?parseInt(proyNota):'—'}
+          </td>
+          ${q===1?'<td>—</td><td>—</td><td>—</td>':'<td>—</td><td>—</td>'}
+        </tr>
+      </tbody>
+    </table>`;
+  }
+
+  function contsPrint(mats){
+    const rows=mats.filter(m=>m.alcanzados.length||m.pendientes.length);
+    if(!rows.length) return '<div class="p-cont-row"><span style="color:#999;font-style:italic">Sin contenidos cargados.</span><span></span><span></span></div>';
+    return rows.map(m=>`
+      <div class="p-cont-row">
+        <span style="font-weight:700">${m.materia}</span>
+        <span style="color:#1a5c3a">${m.alcanzados.join(' · ')||'—'}</span>
+        <span style="color:#c62828">${m.pendientes.join(' · ')||'—'}</span>
+      </div>`).join('');
+  }
+
+  document.getElementById('rite-print-area').innerHTML=`
+    <div class="p-page">
+      <div class="p-header-top">
+        <div class="p-año">${cicloActual} – Ley 988</div>
+        <div style="font-size:9px">EVALUACIÓN DE PROCESO</div>
+      </div>
+      <div class="p-titulo">RITE ${cicloActual}</div>
+      <div class="p-subtitulo">Registro Individual de Trayectoria Educativa</div>
+      <div class="p-info-bloque">
+        <div class="p-info-celda"><b>Escuela</b>CENS Nº 451</div>
+        <div class="p-info-celda"><b>Distrito</b>La Matanza</div>
+        <div class="p-info-celda"><b>Curso</b>${curso.nombre}</div>
+      </div>
+      <div class="p-alumno-bloque">
+        <div><span style="font-size:9px">Estudiante</span><br><strong style="font-size:12px;text-transform:uppercase">${alumno.nombre}</strong></div>
+        <div style="margin-left:24px"><span style="font-size:9px">Ciclo lectivo: ${cicloActual}</span><br><span style="font-size:9px">Preceptor/a: ${curso.preceptor}</span></div>
+      </div>
+      <div class="p-leyenda">
+        <span style="font-weight:700">Trayectorias:</span>
+        <span><span class="tel" style="padding:1px 5px">TEL</span> Trayectoria Educativa Lograda</span>
+        <span><span class="tep" style="padding:1px 5px">TEP</span> En Proceso</span>
+        <span><span class="ted" style="padding:1px 5px">TED</span> Discontinua</span>
+      </div>
+      <div class="p-seccion">Módulo 1 — Primer Cuatrimestre</div>
+      ${tablaPrint(mat1,1,proy1)}
+      <div class="p-modulo-estado">
+        <b>Módulo 1:</b> &nbsp;
+        ${mod1.tray!=='—'?`<span class="${clsTray(mod1.tray)}" style="padding:1px 8px;font-weight:700">${mod1.tray}</span> — ${trayLabel(mod1.tray)} &nbsp;·&nbsp; Estado: <b>${mod1.estado}</b>`:'Sin datos'}
+      </div>
+      <div class="p-cont-bloque">
+        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 1</div>
+        <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
+        ${contsPrint(mat1)}
+      </div>
+      <div class="p-seccion">Módulo 2 — Segundo Cuatrimestre</div>
+      ${tablaPrint(mat2,2,proy2)}
+      <div class="p-modulo-estado">
+        <b>Módulo 2:</b> &nbsp;
+        ${mod2.tray!=='—'?`<span class="${clsTray(mod2.tray)}" style="padding:1px 8px;font-weight:700">${mod2.tray}</span> — ${trayLabel(mod2.tray)} &nbsp;·&nbsp; Estado: <b>${mod2.estado}</b>`:'Sin datos'}
+      </div>
+      <div class="p-cont-bloque">
+        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 2</div>
+        <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
+        ${contsPrint(mat2)}
+      </div>
+      <div class="nota-legal">
+        La calificación se expresa en números enteros en la escala de 1 (uno) a 10 (diez). La calificación mínima para la aprobación es de 7 (siete). Cada módulo se considera APROBADO cuando el/la estudiante ha aprobado todas las asignaturas y participado en el Proyecto de Acción. Se considera PENDIENTE cuando no ha alcanzado los aprendizajes correspondientes o ha tenido escasa vinculación pedagógica.
+      </div>
+      <div class="firmas">
+        <div class="firma-item"><div class="firma-linea"></div><div>Firma del/la Directivo/a</div><div style="font-size:8px;color:#555">Aclaración y sello</div></div>
+        <div class="firma-item"><div class="firma-linea"></div><div>Firma del/la Preceptor/a</div><div style="font-size:8px;color:#555">Aclaración</div></div>
+        <div class="firma-item"><div class="firma-linea"></div><div>Firma del/la Estudiante</div><div style="font-size:8px;color:#555">Aclaración</div></div>
+      </div>
+      <div style="text-align:right;font-size:8px;color:#888;margin-top:10px;border-top:1px solid #eee;padding-top:5px">
+        CENS Nº 451 · La Matanza · Generado: ${hoy()} · Sistema RITE ${cicloActual}
+      </div>
+    </div>`;
+}
+
+function imprimirRite(){ window.print(); }
+
+// =====================================================================
+// INFORME POR CURSO
+// =====================================================================
+function setupInformeCurso(){
+  poblaCursoSel('inf-curso-sel');
+  mostrarInformeCurso();
+}
+function mostrarInformeCurso(){
+  const cid=document.getElementById('inf-curso-sel').value;
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const resumen=alumnos.map(a=>{
+    let apr1=0,pen1=0,apr2=0,pen2=0,mat1=0,mat2=0;
+    Object.keys(datosLocales).forEach(k=>{
+      if(!k.startsWith('cierre_')) return;
+      const sin=k.replace('cierre_','');
+      const partes=sin.split('_');
+      if(partes[0]!==cid) return;
+      const q=parseInt(partes[partes.length-1].replace('Q',''));
+      const d=datosLocales[k][a.id];
+      if(!d||d.nota===null||d.nota===undefined) return;
+      const ok=parseInt(d.nota)>=7;
+      if(q===1){mat1++;if(ok)apr1++;else pen1++;}
+      else{mat2++;if(ok)apr2++;else pen2++;}
+    });
+    const pn1=((datosLocales[keyProyecto(cid,1)]||{})[a.id]||{}).nota;
+    const pn2=((datosLocales[keyProyecto(cid,2)]||{})[a.id]||{}).nota;
+    return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2};
+  });
+  document.getElementById('inf-curso-content').innerHTML=`<div class="card">
+    <div class="section-label">Resumen · ${cursoNombre(cid)}</div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Alumno/a</th><th>Módulo 1</th><th>Proy.1</th><th>Módulo 2</th><th>Proy.2</th><th></th></tr></thead>
+      <tbody>
+        ${resumen.map(r=>`<tr>
+          <td class="td-nombre">${r.a.nombre}</td>
+          <td>${r.mat1===0?'<span class="badge badge-sin">—</span>':r.pen1===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen1+' pend.</span>'}</td>
+          <td>${notaBadge(r.pn1)}</td>
+          <td>${r.mat2===0?'<span class="badge badge-sin">—</span>':r.pen2===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen2+' pend.</span>'}</td>
+          <td>${notaBadge(r.pn2)}</td>
+          <td><button class="btn btn-secondary btn-sm" onclick="irARite('${cid}','${r.a.id}')">RITE</button></td>
+        </tr>`).join('')}
+      </tbody>
+    </table></div>
+  </div>`;
+}
+function irARite(cid,aid){
+  go('s-rite-gen','');
+  setTimeout(()=>{
+    document.getElementById('rite-curso-sel').value=cid;
+    cargarAlumnosRite();
+    document.getElementById('rite-alumno-sel').value=aid;
+    generarRite();
+  },100);
+}
+
+// =====================================================================
+// VER NOTAS
+// =====================================================================
+function setupVerNotas(){
+  poblaCursoSel('vn-curso',true);
+  const materias=new Set();
+  Object.keys(datosLocales).forEach(k=>{
+    if(!k.startsWith('cierre_')) return;
+    const sin=k.replace('cierre_','');
+    const partes=sin.split('_');
+    const mat=partes.slice(1,-1).join(' ');
+    if(mat) materias.add(mat);
+  });
+  const matSel=document.getElementById('vn-materia');
+  matSel.innerHTML='<option value="">— Todas —</option>';
+  [...materias].sort().forEach(m=>{
+    matSel.innerHTML+=`<option value="${m}">${m}</option>`;
+  });
+  filtrarNotas();
+}
+function filtrarNotas(){
+  const cid=document.getElementById('vn-curso').value;
+  const mat=document.getElementById('vn-materia').value;
+  const rows=[];
+  Object.keys(datosLocales).forEach(k=>{
+    if(!k.startsWith('cierre_')) return;
+    const sin=k.replace('cierre_','');
+    const partes=sin.split('_');
+    const q=parseInt(partes[partes.length-1].replace('Q',''));
+    const cursoPart=partes[0];
+    const materia=partes.slice(1,-1).join(' ');
+    if(cid&&cursoPart!==cid) return;
+    if(mat&&materia!==mat) return;
+    const cierre=datosLocales[k];
+    Object.keys(cierre).forEach(aid=>{
+      const d=cierre[aid];
+      if(d.nota===null||d.nota===undefined) return;
+      rows.push({curso:cursoNombre(cursoPart),materia,q,alumno:alumnoNombre(aid),nota:d.nota});
+    });
+  });
+  if(!rows.length){
+    document.getElementById('vn-content').innerHTML='<div class="empty">Sin notas cargadas con esos filtros.</div>';
+    return;
+  }
+  document.getElementById('vn-content').innerHTML=`<div class="card"><div class="tabla-wrap"><table>
+    <thead><tr><th>Curso</th><th>Materia</th><th>Cuatrim.</th><th>Alumno/a</th><th>Nota</th></tr></thead>
+    <tbody>${rows.map(r=>`<tr>
+      <td>${r.curso}</td><td>${r.materia}</td><td>${r.q}°</td>
+      <td class="td-nombre">${r.alumno}</td><td>${notaBadge(r.nota)}</td>
+    </tr>`).join('')}</tbody>
+  </table></div></div>`;
+}
+
+// =====================================================================
+// ALUMNOS POR CURSO
+// =====================================================================
+function setupAlumnosCurso(){
+  poblaCursoSel('ac-curso');
+  mostrarAlumnosCurso();
+}
+function mostrarAlumnosCurso(){
+  const cid=document.getElementById('ac-curso').value;
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  document.getElementById('ac-content').innerHTML=`<div class="card">
+    <div class="section-label">${alumnos.length} alumnos · ${cursoNombre(cid)} · Preceptor/a: ${cursoPreceptor(cid)}</div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>#</th><th>Apellido y Nombre</th></tr></thead>
+      <tbody>${alumnos.map((a,i)=>`<tr><td style="color:var(--texto3)">${i+1}</td><td class="td-nombre">${a.nombre}</td></tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+
+// =====================================================================
+// DICYT
+// =====================================================================
+function setupMenuDicyt(){
+  document.getElementById('dicyt-header-user').textContent=sesion.nombre;
+  document.getElementById('dicyt-header-ciclo').textContent=cicloActual;
+}
+function irVerNotasDicyt(){
+  go('s-ver-notas','');
+  document.getElementById('ver-notas-back').onclick=()=>go('s-menu-dicyt','');
+}
+function setupDicytProyecto(){
+  poblaCursoSel('dicyt-curso');
+  cargarDicytAlumnos();
+}
+function cargarDicytAlumnos(){
+  const cid=document.getElementById('dicyt-curso').value;
+  const q=document.getElementById('dicyt-cuatri').value;
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const data=datosLocales[keyProyecto(cid,q)]||{};
+  document.getElementById('dicyt-tbody').innerHTML=alumnos.map(a=>{
+    const nota=data[a.id]?.nota||'';
+    return `<tr>
+      <td class="td-nombre">${a.nombre}</td>
+      <td><input class="nota-num" type="number" min="1" max="10" value="${nota}" data-id="${a.id}" oninput="actualizarDicyt(this)"></td>
+      <td id="dicyt-estado-${a.id}">${nota?notaBadge(nota):'<span class="badge badge-sin">—</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+function actualizarDicyt(inp){
+  document.getElementById('dicyt-estado-'+inp.dataset.id).innerHTML=inp.value?notaBadge(inp.value):'<span class="badge badge-sin">—</span>';
+}
+async function guardarDicyt(){
+  const cid=document.getElementById('dicyt-curso').value;
+  const q=document.getElementById('dicyt-cuatri').value;
+  const data={};
+  document.querySelectorAll('#dicyt-tbody .nota-num').forEach(inp=>{
+    data[inp.dataset.id]={nota:inp.value?parseInt(inp.value):null};
+  });
+  datosLocales[keyProyecto(cid,q)]=data;
+  await guardarDatos();
+
+  const datos=Object.entries(data).map(([alumnoId,d])=>({alumnoId,nota:d.nota}));
+  try {
+    await api('guardarProyectoBloque',{ciclo:cicloActual,cursoId:cid,cuatrimestre:q,datos});
+    toast('Notas del Proyecto de Acción guardadas ✓');
+  } catch(e){
+    toast('Guardado local ✓');
+  }
+}
+
+// =====================================================================
+// INIT
+// =====================================================================
+async function init(){
+  await cargarDatosLocales();
+  // Cargar config desde el sheet
+  try {
+    const config=await api('getConfig',{});
+    cicloActual=String(config.ciclo_lectivo||'2026');
+    document.getElementById('hero-cens-nombre').textContent=config.nombre_cens||'CENS Nº 451';
+    document.getElementById('hero-distrito').textContent=`${config.distrito||'La Matanza'} · ${config.provincia||'Buenos Aires'}`;
+  } catch(e){
+    cicloActual='2026';
+  }
+  document.getElementById('hero-ciclo').textContent=cicloActual;
+  hideOverlay();
+  document.getElementById('s-inicio').classList.add('active');
+}
+
+init();
+</script>
+</body>
+</html>
