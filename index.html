@@ -1078,7 +1078,7 @@ async function doLogin(){
   document.getElementById('login-loading').style.display='none';
   if(!userOk){ document.getElementById('login-error').style.display=''; return; }
   sesion={rol,nombre:nombre||userNombre};
-  if(rol==='preceptor'||rol==='directivo') go('s-menu-prec','');
+  if(rol==='preceptor'||rol==='directivo'||rol==='directora') go('s-menu-prec','');
   else if(rol==='dicyt') go('s-menu-dicyt','');
 }
 
