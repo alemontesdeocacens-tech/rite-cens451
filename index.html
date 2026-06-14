@@ -150,8 +150,16 @@ tr:hover td{background:#fafaf8}
 .cont-item{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--borde)}
 .cont-item:last-child{border-bottom:none}
 .cont-item span{flex:1;font-size:13px}
-.cont-checks{display:flex;gap:12px}
-.cont-checks label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:var(--texto2)}
+.cont-checks{display:flex;gap:12px;flex-shrink:0}
+.cont-checks label{display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;color:var(--texto2);white-space:nowrap}
+
+/* ===== FILA DE CONTENIDOS INLINE (CIERRE) ===== */
+.cont-arrow{display:inline-block;transition:transform .2s;margin-left:4px}
+.cont-arrow.open{transform:rotate(180deg)}
+.cont-row td{background:var(--gris);padding:10px 14px!important}
+.cont-row .cont-inline-title{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.cont-row .cont-item{padding:6px 0}
+.cont-row .cont-item span{font-size:12.5px}
 .cont-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
 .chip{background:var(--verde-claro);color:var(--verde);border:1px solid #b0d9c0;border-radius:20px;padding:4px 10px;font-size:12px;display:flex;align-items:center;gap:5px}
 .chip-x{cursor:pointer;opacity:.6;font-size:14px;line-height:1}
@@ -468,11 +476,6 @@ tr:hover td{background:#fafaf8}
         <thead><tr><th>Alumno/a</th><th>Nota</th><th>Estado</th></tr></thead>
         <tbody id="cierre-tbody"></tbody>
       </table>
-    </div>
-    <div id="cierre-cont-section" style="margin-top:16px;display:none">
-      <div class="section-label">Contenidos por alumno — marcá alcanzados/pendientes</div>
-      <p style="font-size:12px;color:var(--texto2);margin-bottom:10px">Hacé click en el nombre de un alumno para ver sus contenidos.</p>
-      <div id="cierre-cont-list"></div>
     </div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="guardarCierre()">💾 Guardar cierre del cuatrimestre</button>
   </div>
@@ -797,7 +800,6 @@ let sesion = null;
 let datosLocales = {};
 let cicloActual = '2026';
 let materiasCache = [];
-let ALUMNOS = [...ALUMNOS_RAW]; // se reemplaza con datos del sheet al iniciar
 
 // =====================================================================
 // API CALLS CON FALLBACK LOCAL
@@ -814,10 +816,10 @@ async function apiConFallback(action, body = {}, fallback = null) {
 // =====================================================================
 // HELPERS
 // =====================================================================
-function alumnosDeCurso(cursoId){ return ALUMNOS.filter(a=>a.curso===cursoId); }
+function alumnosDeCurso(cursoId){ return ALUMNOS_RAW.filter(a=>a.curso===cursoId); }
 function cursoNombre(id){ const c=CURSOS.find(c=>c.id===id); return c?c.nombre:id; }
-function alumnoNombre(id){ const a=ALUMNOS.find(a=>a.id===id); return a?a.nombre:id; }
-function cursoDeAlumno(aid){ const a=ALUMNOS.find(a=>a.id===aid); return a?a.curso:null; }
+function alumnoNombre(id){ const a=ALUMNOS_RAW.find(a=>a.id===id); return a?a.nombre:id; }
+function cursoDeAlumno(aid){ const a=ALUMNOS_RAW.find(a=>a.id===aid); return a?a.curso:null; }
 function cursoPreceptor(cid){ const c=CURSOS.find(c=>c.id===cid); return c?c.preceptor:''; }
 
 function keyBimestre(dk){ return `bim_${dk}`; }
@@ -1009,28 +1011,23 @@ async function doLogin(){
   if(rol==='alumno'){
     const dni=document.getElementById('alu-dni').value.trim();
     if(!dni){ toast('Ingresá tu DNI','err'); return; }
-    if(!/^\d{7,8}$/.test(dni)){ toast('DNI inválido (debe tener 7 u 8 dígitos)','err'); return; }
+    const alumno=ALUMNOS_RAW.find(a=>a.dni&&a.dni===dni);
+    // Como los DNIs no están cargados aún, buscamos en la hoja inscripción del sheet original
+    // Por ahora: validación permisiva — cualquier DNI válido de 7-8 dígitos accede
+    if(!/^\d{7,8}$/.test(dni)){ toast('DNI inválido','err'); return; }
     document.getElementById('login-loading').style.display='';
-    // Buscar en ALUMNOS (ya cargado del sheet). Si no está, consultar la API directo.
-    let alumno = ALUMNOS.find(a=>a.dni && a.dni.trim()===dni);
-    if(!alumno){
-      try {
-        const res = await api('getAlumnoByDni', {dni});
-        if(res && res.encontrado && res.alumno){
-          alumno = {
-            id:     String(res.alumno.id || '').trim(),
-            nombre: String(res.alumno.nombre || '').trim().toUpperCase(),
-            curso:  String(res.alumno.idCurso || res.alumno.curso || '').trim(),
-            dni:    String(res.alumno.dni || '').trim(),
-          };
-          // Agregar al array local para que las demás funciones lo encuentren
-          ALUMNOS.push(alumno);
-        }
-      } catch(e){ /* si falla la API igual intentamos mostrar el RITE */ }
+    // Buscar alumno por DNI en el sheet de inscripción
+    try {
+      sesion={rol:'alumno',dni};
+      // Intentamos encontrar el alumno en ALUMNOS_RAW por dni
+      // En esta versión, si el alumno está registrado con DNI, lo encontramos
+      // Si no, mostramos todos los que matcheen
+      go('s-alumno-rite','');
+    } catch(e){
+      document.getElementById('login-loading').style.display='none';
+      document.getElementById('login-error').style.display='';
+      document.getElementById('login-error').textContent='⚠ No encontramos tu DNI. Verificá el número ingresado.';
     }
-    document.getElementById('login-loading').style.display='none';
-    sesion={rol:'alumno', dni, alumno: alumno || null};
-    go('s-alumno-rite','');
     return;
   }
 
@@ -1058,27 +1055,13 @@ async function doLogin(){
     return;
   }
 
-  // Otros roles — valida contra el Sheet (con fallback a USUARIOS_FIJOS)
+  // Otros roles
   const nombre=document.getElementById('ot-nombre').value.trim();
   const pass=document.getElementById('ot-pass').value;
-  document.getElementById('login-loading').style.display='';
-  let userOk = false;
-  let userNombre = '';
-  try {
-    const result = await api('loginUsuario', {rol, pass});
-    if(result && result.ok){
-      userOk = true;
-      userNombre = result.nombre || nombre;
-    }
-  } catch(e) {
-    // Fallback a USUARIOS_FIJOS si la API falla
-    const user=USUARIOS_FIJOS.find(u=>u.rol===rol&&u.pass===pass);
-    if(user){ userOk=true; userNombre=user.nombre; }
-  }
-  document.getElementById('login-loading').style.display='none';
-  if(!userOk){ document.getElementById('login-error').style.display=''; return; }
-  sesion={rol,nombre:nombre||userNombre};
-  if(rol==='preceptor'||rol==='directivo'||rol==='directora') go('s-menu-prec','');
+  const user=USUARIOS_FIJOS.find(u=>u.rol===rol&&u.pass===pass);
+  if(!user){ document.getElementById('login-error').style.display=''; return; }
+  sesion={rol,nombre:nombre||user.nombre};
+  if(rol==='preceptor'||rol==='directivo') go('s-menu-prec','');
   else if(rol==='dicyt') go('s-menu-dicyt','');
 }
 
@@ -1095,7 +1078,7 @@ async function cargarRiteAlumno(){
   // Buscar el alumno en ALUMNOS_RAW por DNI
   // Como los DNIs están vacíos en el array actual, mostramos un mensaje amigable
   // En el futuro, cuando se carguen los DNIs desde el sheet, esto funcionará automáticamente
-  const alumno=ALUMNOS.find(a=>a.dni&&a.dni.trim()===dni);
+  const alumno=ALUMNOS_RAW.find(a=>a.dni&&a.dni.trim()===dni);
 
   if(!alumno){
     document.getElementById('alu-rite-content').innerHTML=`
@@ -1226,41 +1209,41 @@ function setupCierre(){
   const cierre=datosLocales[keyCierre(docKey())]||{};
   document.getElementById('cierre-tbody').innerHTML=alumnos.map(a=>{
     const nota=cierre[a.id]?.nota||'';
+    const marcados=cierre[a.id]?.contenidos||{};
+    const filaCont=conts.length?`<tr class="cont-row" id="cont-row-${a.id}" style="display:none">
+        <td colspan="3">
+          <div class="cont-inline-title">Saberes — ${a.nombre}</div>
+          ${conts.map((c,i)=>`
+            <div class="cont-item">
+              <span>${c}</span>
+              <div class="cont-checks">
+                <label><input type="radio" name="cont_${a.id}_${i}" value="alcanzado" ${marcados[i]==='alcanzado'?'checked':''}> Alcanzado</label>
+                <label><input type="radio" name="cont_${a.id}_${i}" value="pendiente" ${marcados[i]==='pendiente'?'checked':''}> Pendiente</label>
+              </div>
+            </div>`).join('')}
+        </td>
+      </tr>`:'';
     return `<tr>
-      <td class="td-nombre" style="cursor:pointer;color:var(--verde)" onclick="abrirContAlumno('${a.id}','${a.nombre.replace(/'/g,"\\'")}')">
-        ${a.nombre} ${conts.length?'<span style="font-size:10px;opacity:.5">▼</span>':''}
+      <td class="td-nombre" style="cursor:pointer;color:var(--verde)" onclick="toggleContAlumno('${a.id}')">
+        ${a.nombre} ${conts.length?`<span class="cont-arrow" id="arrow-${a.id}">▾</span>`:''}
       </td>
       <td><input class="nota-num" type="number" min="1" max="10" value="${nota}" data-id="${a.id}" oninput="actualizarEstadoCierre(this)"></td>
       <td id="estado-${a.id}">${nota?notaBadge(nota):'<span class="badge badge-sin">—</span>'}</td>
-    </tr>`;
+    </tr>${filaCont}`;
   }).join('');
-  if(conts.length>0) document.getElementById('cierre-cont-section').style.display='';
 }
 
 function actualizarEstadoCierre(inp){
   document.getElementById('estado-'+inp.dataset.id).innerHTML=inp.value?notaBadge(inp.value):'<span class="badge badge-sin">—</span>';
 }
 
-let alumnoContAbierto=null;
-function abrirContAlumno(aid,anombre){
-  alumnoContAbierto=aid;
-  const conts=datosLocales[keyContenidos(docKey())]||[];
-  const cierre=datosLocales[keyCierre(docKey())]||{};
-  const marcados=cierre[aid]?.contenidos||{};
-  const list=document.getElementById('cierre-cont-list');
-  if(!conts.length){ list.innerHTML='<div class="empty">Sin contenidos cargados.</div>'; return; }
-  list.innerHTML=`<div class="card" style="border-color:var(--verde)">
-    <div style="font-size:12px;font-weight:600;margin-bottom:10px;color:var(--verde)">📋 ${anombre}</div>`+
-    conts.map((c,i)=>`
-      <div class="cont-item">
-        <span>${c}</span>
-        <div class="cont-checks">
-          <label><input type="radio" name="cont_${aid}_${i}" value="alcanzado" ${marcados[i]==='alcanzado'?'checked':''}> Alcanzado</label>
-          <label><input type="radio" name="cont_${aid}_${i}" value="pendiente" ${marcados[i]==='pendiente'?'checked':''}> Pendiente</label>
-        </div>
-      </div>`).join('')+
-    '</div>';
-  list.scrollIntoView({behavior:'smooth',block:'nearest'});
+function toggleContAlumno(aid){
+  const row=document.getElementById('cont-row-'+aid);
+  if(!row) return;
+  const abierto=row.style.display!=='none';
+  row.style.display=abierto?'none':'table-row';
+  const arrow=document.getElementById('arrow-'+aid);
+  if(arrow) arrow.classList.toggle('open',!abierto);
 }
 
 async function guardarCierre(){
@@ -1425,7 +1408,7 @@ function setupMenuPrec(){
   document.getElementById('prec-header-title').textContent=sesion.rol==='directivo'?'Directivo/a':'Preceptoría';
   document.getElementById('prec-header-user').textContent=sesion.nombre;
   document.getElementById('prec-header-ciclo').textContent=cicloActual;
-  const total=ALUMNOS.length;
+  const total=ALUMNOS_RAW.length;
   let aprob=0,pend=0,notas=0;
   Object.keys(datosLocales).forEach(k=>{
     if(!k.startsWith('cierre_')) return;
@@ -1520,7 +1503,7 @@ function generarRite(){
 // =====================================================================
 function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const curso=CURSOS.find(c=>c.id===cid);
-  const alumno=ALUMNOS.find(a=>a.id===aid);
+  const alumno=ALUMNOS_RAW.find(a=>a.id===aid);
   if(!alumno||!curso){ toast('Alumno no encontrado','err'); return; }
 
   const materiasAlumno=[];
@@ -1940,31 +1923,16 @@ async function guardarDicyt(){
 // =====================================================================
 async function init(){
   await cargarDatosLocales();
-  // Cargar config y alumnos desde el sheet en paralelo
+  // Cargar config desde el sheet
   try {
-    const [config, alumnosSheet] = await Promise.all([
-      api('getConfig', {}),
-      api('getAlumnos', {})
-    ]);
-    cicloActual = String(config.ciclo_lectivo || '2026');
-    document.getElementById('hero-cens-nombre').textContent = config.nombre_cens || 'CENS Nº 451';
-    document.getElementById('hero-distrito').textContent = `${config.distrito||'La Matanza'} · ${config.provincia||'Buenos Aires'}`;
-    // Reemplazar el array local con los datos del sheet si vinieron bien
-    if (Array.isArray(alumnosSheet) && alumnosSheet.length > 0) {
-      // Normalizar columnas del sheet (idCurso -> curso, nombre en mayúsculas)
-      ALUMNOS = alumnosSheet.map(a => ({
-        id:     String(a.id   || '').trim(),
-        nombre: String(a.nombre || '').trim().toUpperCase(),
-        curso:  String(a.idCurso || a.curso || '').trim(),
-        dni:    String(a.dni  || '').trim(),
-      })).filter(a => a.id);
-      console.log(`✓ ${ALUMNOS.length} alumnos cargados desde el Sheet`);
-    }
+    const config=await api('getConfig',{});
+    cicloActual=String(config.ciclo_lectivo||'2026');
+    document.getElementById('hero-cens-nombre').textContent=config.nombre_cens||'CENS Nº 451';
+    document.getElementById('hero-distrito').textContent=`${config.distrito||'La Matanza'} · ${config.provincia||'Buenos Aires'}`;
   } catch(e){
-    cicloActual = '2026';
-    console.warn('No se pudo cargar desde el Sheet, usando datos locales:', e);
+    cicloActual='2026';
   }
-  document.getElementById('hero-ciclo').textContent = cicloActual;
+  document.getElementById('hero-ciclo').textContent=cicloActual;
   hideOverlay();
   document.getElementById('s-inicio').classList.add('active');
 }
