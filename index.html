@@ -1074,9 +1074,6 @@ async function cargarRiteAlumno(){
   document.getElementById('alu-acciones').style.display='none';
   document.getElementById('alu-rite-content').innerHTML='<div class="loading"><div class="spinner"></div>Buscando tu RITE…</div>';
 
-  // Buscar el alumno en ALUMNOS_RAW por DNI
-  // Como los DNIs están vacíos en el array actual, mostramos un mensaje amigable
-  // En el futuro, cuando se carguen los DNIs desde el sheet, esto funcionará automáticamente
   const alumno=ALUMNOS_RAW.find(a=>a.dni&&a.dni.trim()===dni);
 
   if(!alumno){
@@ -1095,20 +1092,12 @@ async function cargarRiteAlumno(){
 
   const curso=CURSOS.find(c=>c.id===alumno.curso);
   document.getElementById('alu-header-user').textContent=alumno.nombre;
-
-  try {
-    const data=await api('getRiteAlumno',{ciclo:cicloActual,alumnoId:alumno.id,cursoId:alumno.curso});
-    renderRiteAlumnoView(alumno,curso,data);
-    document.getElementById('alu-acciones').style.display='';
-  } catch(e){
-    // Fallback a datos locales
-    generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content');
-    document.getElementById('alu-acciones').style.display='';
-  }
+  document.getElementById('alu-acciones').style.display='';
+  await renderRiteAlumnoView(alumno,curso);
 }
 
-function renderRiteAlumnoView(alumno,curso,data){
-  // Construir vista del RITE con datos del sheet
+async function renderRiteAlumnoView(alumno,curso){
+  // Construir vista del RITE con datos reales del sheet (con fallback a datosLocales)
   const el=document.getElementById('alu-rite-content');
   el.innerHTML=`
     <div class="alumno-rite-card">
@@ -1117,7 +1106,7 @@ function renderRiteAlumnoView(alumno,curso,data){
       <div class="arc-ciclo">Ciclo Lectivo ${cicloActual}</div>
     </div>
   `;
-  generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content',true);
+  await generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content',true);
 }
 
 // =====================================================================
@@ -1262,8 +1251,8 @@ async function guardarCierre(){
   datosLocales[keyCierre(docKey())]=cierre;
   await guardarDatos();
 
-  // Sincronizar cierres con API
-  const datos=Object.entries(cierre).map(([alumnoId,d])=>({alumnoId,nota:d.nota}));
+  // Sincronizar cierres con API (incluye detalle de contenidos por alumno)
+  const datos=Object.entries(cierre).map(([alumnoId,d])=>({alumnoId,nota:d.nota,contenidos:d.contenidos||{}}));
   try {
     await api('guardarCierreBloque',{
       ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
@@ -1490,49 +1479,103 @@ function cargarAlumnosRite(){
   document.getElementById('rite-alumno-sel').innerHTML=
     alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
 }
-function generarRite(){
+async function generarRite(){
   const cid=document.getElementById('rite-curso-sel').value;
   const aid=document.getElementById('rite-alumno-sel').value;
-  generarRiteParaAlumno(cid,aid,'rite-preview');
+  document.getElementById('rite-acciones').style.display='none';
+  await generarRiteParaAlumno(cid,aid,'rite-preview');
   document.getElementById('rite-acciones').style.display='';
 }
 
 // =====================================================================
 // CORE RITE GENERATOR (compartido por preceptor y alumno)
 // =====================================================================
-function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
+async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const curso=CURSOS.find(c=>c.id===cid);
   const alumno=ALUMNOS_RAW.find(a=>a.id===aid);
   if(!alumno||!curso){ toast('Alumno no encontrado','err'); return; }
 
-  const materiasAlumno=[];
-  Object.keys(datosLocales).forEach(k=>{
-    if(!k.startsWith('cierre_')) return;
-    const cierre=datosLocales[k];
-    if(!cierre[aid]) return;
-    const sin=k.replace('cierre_','');
-    const partes=sin.split('_');
-    const qPart=partes[partes.length-1];
-    const cuatri=parseInt(qPart.replace('Q',''));
-    if(partes[0]!==cid) return;
-    const materia=partes.slice(1,-1).join(' ');
-    const d=cierre[aid];
-    const nota=d.nota;
-    const tray=(datosLocales[`bim_${sin}`]||{})[aid]?.tray||'—';
-    const conts=datosLocales[`cont_${sin}`]||[];
-    const contData=d.contenidos||{};
-    const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
-    const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]);
-    const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
-    const recNotas=turnos.map(t=>{
-      const rk=`rec_${sin}_${t}`;
-      return (datosLocales[rk]||{})[aid]?.nota;
-    });
-    materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
-  });
+  const contenedor=document.getElementById(contenedorId);
+  const loadingHTML='<div class="loading"><div class="spinner"></div>Generando RITE…</div>';
+  if(append) contenedor.innerHTML+=loadingHTML; else contenedor.innerHTML=loadingHTML;
 
-  const proy1=((datosLocales[keyProyecto(cid,1)]||{})[aid]||{}).nota;
-  const proy2=((datosLocales[keyProyecto(cid,2)]||{})[aid]||{}).nota;
+  // Intentamos traer los datos reales desde el Sheet (funciona en cualquier dispositivo/navegador).
+  // Si falla la conexión, caemos a datosLocales (caché del navegador actual) como respaldo.
+  let sheetData=null;
+  try {
+    sheetData=await api('getRiteAlumno',{ciclo:cicloActual,alumnoId:aid,cursoId:cid});
+  } catch(e){
+    console.warn('No se pudo traer el RITE desde el sheet, usando datos locales:', e);
+  }
+
+  const materiasAlumno=[];
+
+  if(sheetData){
+    // ── Construcción desde el Sheet ──────────────────────────────────
+    // Agrupamos cierres por materia+cuatrimestre (cada fila de "Cierres" = una materia cursada)
+    (sheetData.cierres||[]).forEach(c=>{
+      if(String(c.curso_id)!==cid) return;
+      const cuatri=parseInt(c.cuatrimestre);
+      const materia=c.materia;
+      const nota=c.nota!==''&&c.nota!==undefined&&c.nota!==null?c.nota:null;
+
+      const trayRow=(sheetData.tray||[]).find(t=>
+        String(t.curso_id)===cid && t.materia===materia && String(t.cuatrimestre)===String(cuatri));
+      const tray=trayRow?trayRow.trayectoria:'—';
+
+      const contRow=(sheetData.contenidos||[]).find(co=>
+        co.materia===materia && String(co.cuatrimestre)===String(cuatri));
+      let conts=[];
+      if(contRow){ try{ conts=JSON.parse(contRow.contenidos_json||'[]'); }catch(e){ conts=[]; } }
+      // Buscamos qué contenidos quedaron marcados para este alumno (guardados junto al cierre)
+      let contData={};
+      try{ contData=c.contenidos_alumno?JSON.parse(c.contenidos_alumno):{}; }catch(e){ contData={}; }
+      const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
+      const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]!==undefined);
+
+      const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
+      const recNotas=turnos.map(t=>{
+        const r=(sheetData.recups||[]).find(rr=>
+          String(rr.curso_id)===cid && rr.materia===materia &&
+          String(rr.cuatrimestre)===String(cuatri) && rr.turno===t);
+        return r&&r.nota!==''?r.nota:null;
+      });
+      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
+    });
+  } else {
+    // ── Fallback: construcción desde localStorage (versión anterior) ──
+    Object.keys(datosLocales).forEach(k=>{
+      if(!k.startsWith('cierre_')) return;
+      const cierre=datosLocales[k];
+      if(!cierre[aid]) return;
+      const sin=k.replace('cierre_','');
+      const partes=sin.split('_');
+      const qPart=partes[partes.length-1];
+      const cuatri=parseInt(qPart.replace('Q',''));
+      if(partes[0]!==cid) return;
+      const materia=partes.slice(1,-1).join(' ');
+      const d=cierre[aid];
+      const nota=d.nota;
+      const tray=(datosLocales[`bim_${sin}`]||{})[aid]?.tray||'—';
+      const conts=datosLocales[`cont_${sin}`]||[];
+      const contData=d.contenidos||{};
+      const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
+      const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]);
+      const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
+      const recNotas=turnos.map(t=>{
+        const rk=`rec_${sin}_${t}`;
+        return (datosLocales[rk]||{})[aid]?.nota;
+      });
+      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
+    });
+  }
+
+  const proy1=sheetData
+    ? (()=>{ const p=(sheetData.proyectos||[]).find(p=>String(p.curso_id)===cid&&String(p.cuatrimestre)==='1'); return p&&p.nota!==''?p.nota:null; })()
+    : ((datosLocales[keyProyecto(cid,1)]||{})[aid]||{}).nota;
+  const proy2=sheetData
+    ? (()=>{ const p=(sheetData.proyectos||[]).find(p=>String(p.curso_id)===cid&&String(p.cuatrimestre)==='2'); return p&&p.nota!==''?p.nota:null; })()
+    : ((datosLocales[keyProyecto(cid,2)]||{})[aid]||{}).nota;
   const mat1=materiasAlumno.filter(m=>m.cuatri===1);
   const mat2=materiasAlumno.filter(m=>m.cuatri===2);
 
@@ -1620,9 +1663,9 @@ function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       </div>
     </div>`;
 
-  const contenedor=document.getElementById(contenedorId);
-  if(append) contenedor.innerHTML+=previewHTML;
-  else contenedor.innerHTML=previewHTML;
+  const contenedorFinal=document.getElementById(contenedorId);
+  if(append) contenedorFinal.innerHTML+=previewHTML;
+  else contenedorFinal.innerHTML=previewHTML;
 
   // Área de impresión
   function trayLabel(t){
