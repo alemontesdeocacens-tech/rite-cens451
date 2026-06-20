@@ -1869,7 +1869,16 @@ async function mostrarInformeCurso(){
     const pn2=data
       ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.cuatrimestre)==='2'); return p&&p.nota!==''?p.nota:null; })()
       : ((datosLocales[keyProyecto(cid,2)]||{})[a.id]||{}).nota;
-    return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2};
+
+    // Trayectorias del bimestre vigente para este alumno, por materia
+    let trayAlumno=[];
+    if(data){
+      trayAlumno=(data.tray||[])
+        .filter(t=>t.alumno_id===a.id)
+        .map(t=>({materia:t.materia,cuatri:t.cuatrimestre,tray:t.trayectoria}))
+        .sort((x,y)=>x.cuatri-y.cuatri||x.materia.localeCompare(y.materia));
+    }
+    return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2,trayAlumno};
   });
 
   // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
@@ -1932,21 +1941,45 @@ async function mostrarInformeCurso(){
   cont.innerHTML=`<div class="card">
     <div class="section-label">Resumen general · ${cursoNombre(cid)}</div>
     <div class="tabla-wrap"><table>
-      <thead><tr><th>Alumno/a</th><th>Módulo 1</th><th>Proy.1</th><th>Módulo 2</th><th>Proy.2</th><th></th></tr></thead>
+      <thead><tr><th>Alumno/a</th><th>Bimestre</th><th>Módulo 1</th><th>Proy.1</th><th>Módulo 2</th><th>Proy.2</th><th></th></tr></thead>
       <tbody>
-        ${resumen.map(r=>`<tr>
+        ${resumen.map(r=>{
+          const tieneTray=r.trayAlumno.length>0;
+          const filaDetalle=tieneTray?`<tr class="cont-row" id="inf-tray-row-${r.a.id}" style="display:none">
+            <td colspan="7">
+              <div class="cont-inline-title">Trayectorias del Bimestre — ${r.a.nombre}</div>
+              ${r.trayAlumno.map(t=>`
+                <div class="cont-item">
+                  <span>${t.materia} <span style="color:var(--texto3);font-weight:400">· ${t.cuatri}° cuatrimestre</span></span>
+                  <span class="badge ${t.tray==='TEL'?'badge-tel':t.tray==='TEP'?'badge-tep':'badge-ted'}">${t.tray}</span>
+                </div>`).join('')}
+            </td>
+          </tr>`:'';
+          return `<tr>
           <td class="td-nombre">${r.a.nombre}</td>
+          <td>${tieneTray
+              ?`<span style="cursor:pointer;color:var(--verde);font-weight:600;font-size:12px" onclick="toggleInfTray('${r.a.id}')">Ver <span class="cont-arrow" id="inf-tray-arrow-${r.a.id}">▾</span></span>`
+              :'<span class="badge badge-sin">—</span>'}</td>
           <td>${r.mat1===0?'<span class="badge badge-sin">—</span>':r.pen1===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen1+' pend.</span>'}</td>
           <td>${notaBadge(r.pn1)}</td>
           <td>${r.mat2===0?'<span class="badge badge-sin">—</span>':r.pen2===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen2+' pend.</span>'}</td>
           <td>${notaBadge(r.pn2)}</td>
           <td><button class="btn btn-secondary btn-sm" onclick="irARite('${cid}','${r.a.id}')">RITE</button></td>
-        </tr>`).join('')}
+        </tr>${filaDetalle}`;
+        }).join('')}
       </tbody>
     </table></div>
   </div>
   ${bimestreHTML}
   ${temasHTML}`;
+}
+function toggleInfTray(aid){
+  const row=document.getElementById('inf-tray-row-'+aid);
+  if(!row) return;
+  const abierto=row.style.display!=='none';
+  row.style.display=abierto?'none':'table-row';
+  const arrow=document.getElementById('inf-tray-arrow-'+aid);
+  if(arrow) arrow.classList.toggle('open',!abierto);
 }
 function irARite(cid,aid){
   go('s-rite-gen','');
