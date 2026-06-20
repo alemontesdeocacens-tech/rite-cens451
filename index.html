@@ -1605,9 +1605,8 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
     const sinCerrar=mats.filter(m=>m.nota===null||m.nota===undefined);
     const desaprobadas=mats.filter(m=>m.nota&&parseInt(m.nota)<7);
     if(sinCerrar.length>0) {
-      // Todavía hay materias sin cierre: el módulo está en curso, no se puede dar por aprobado.
-      const conTED=mats.some(m=>m.tray==='TED');
-      return {tray:conTED?'TED':'TEP', estado:'EN CURSO'};
+      // Todavía hay materias sin cierre: no corresponde una sigla TEL/TEP/TED definitiva.
+      return {tray:'—', estado:'EN CURSO'};
     }
     const proyOk=proyNota!==undefined&&proyNota!==null?parseInt(proyNota)>=7:true;
     if(!desaprobadas.length&&proyOk) return {tray:'TEL',estado:'APROBADO'};
@@ -1660,9 +1659,12 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
 
   function estadoMod(mod){
     const cls=mod.estado==='APROBADO'?'badge-apr':mod.estado==='EN CURSO'?'badge-curso':'badge-pen';
-    const tCls=mod.tray==='TEL'?'badge-tel':mod.tray==='TEP'?'badge-tep':'badge-ted';
+    const trayBadge=mod.tray==='—'?'':(()=>{
+      const tCls=mod.tray==='TEL'?'badge-tel':mod.tray==='TEP'?'badge-tep':'badge-ted';
+      return `<span class="badge ${tCls}">${mod.tray}</span>`;
+    })();
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px">
-      <span class="badge ${tCls}">${mod.tray}</span>
+      ${trayBadge}
       <span class="badge ${cls}">Módulo ${mod.estado}</span>
     </div>`;
   }
@@ -1699,6 +1701,12 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
     return t==='TEL'?'Trayectoria Educativa Lograda':t==='TEP'?'Trayectoria Educativa en Proceso':t==='TED'?'Trayectoria Educativa Discontinua':'—';
   }
   function clsTray(t){ return t==='TEL'?'tel':t==='TEP'?'tep':t==='TED'?'ted':''; }
+  function estadoModPrint(mod){
+    if(mod.estado==='SIN DATOS') return 'Sin datos';
+    if(mod.tray==='—') return `Estado: <b>${mod.estado}</b>`;
+    return `<span class="${clsTray(mod.tray)}" style="padding:1px 8px;font-weight:700">${mod.tray}</span> — ${trayLabel(mod.tray)} &nbsp;·&nbsp; Estado: <b>${mod.estado}</b>`;
+  }
+
 
   function tablaPrint(mats,q,proyNota){
     if(!mats.length) return '<p style="font-size:9px;color:#999;padding:4px">Sin datos cargados.</p>';
@@ -1775,7 +1783,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       ${tablaPrint(mat1,1,proy1)}
       <div class="p-modulo-estado">
         <b>Módulo 1:</b> &nbsp;
-        ${mod1.tray!=='—'?`<span class="${clsTray(mod1.tray)}" style="padding:1px 8px;font-weight:700">${mod1.tray}</span> — ${trayLabel(mod1.tray)} &nbsp;·&nbsp; Estado: <b>${mod1.estado}</b>`:'Sin datos'}
+        ${estadoModPrint(mod1)}
       </div>
       <div class="p-cont-bloque">
         <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 1</div>
@@ -1786,7 +1794,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       ${tablaPrint(mat2,2,proy2)}
       <div class="p-modulo-estado">
         <b>Módulo 2:</b> &nbsp;
-        ${mod2.tray!=='—'?`<span class="${clsTray(mod2.tray)}" style="padding:1px 8px;font-weight:700">${mod2.tray}</span> — ${trayLabel(mod2.tray)} &nbsp;·&nbsp; Estado: <b>${mod2.estado}</b>`:'Sin datos'}
+        ${estadoModPrint(mod2)}
       </div>
       <div class="p-cont-bloque">
         <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 2</div>
