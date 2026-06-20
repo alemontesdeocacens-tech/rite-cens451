@@ -1528,12 +1528,17 @@ function cargarAlumnosRite(){
   document.getElementById('rite-alumno-sel').innerHTML=
     alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
 }
-async function generarRite(){
+async function generarRite(autoPrint=false){
   const cid=document.getElementById('rite-curso-sel').value;
   const aid=document.getElementById('rite-alumno-sel').value;
   document.getElementById('rite-acciones').style.display='none';
   await generarRiteParaAlumno(cid,aid,'rite-preview');
   document.getElementById('rite-acciones').style.display='';
+  if(autoPrint){
+    // Venimos del botón "RITE" del Informe por Curso: abrimos el diálogo
+    // de impresión/guardado como PDF automáticamente, sin pasos extra.
+    setTimeout(()=>imprimirRite(), 300);
+  }
 }
 
 // =====================================================================
@@ -2030,7 +2035,7 @@ function irARite(cid,aid){
     document.getElementById('rite-curso-sel').value=cid;
     cargarAlumnosRite();
     document.getElementById('rite-alumno-sel').value=aid;
-    generarRite();
+    generarRite(true);
   },100);
 }
 
