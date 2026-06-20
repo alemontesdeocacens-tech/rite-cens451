@@ -1812,12 +1812,23 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   function contsPrint(mats){
     const rows=mats.filter(m=>m.alcanzados.length||m.pendientes.length);
     if(!rows.length) return '<div class="p-cont-row"><span style="color:#999;font-style:italic">Sin contenidos cargados.</span><span></span><span></span></div>';
-    return rows.map(m=>`
-      <div class="p-cont-row">
+    return rows.map(m=>{
+      const cerrada=m.nota!==null&&m.nota!==undefined&&m.nota!=='';
+      if(!cerrada){
+        // Todavía no hay cierre/nota: no corresponde indicar qué alcanzó o no
+        // el alumno. Mostramos los temas simplemente como "enseñados".
+        const todos=[...m.alcanzados,...m.pendientes];
+        return `<div class="p-cont-row">
+          <span style="font-weight:700">${m.materia}</span>
+          <span style="color:#555;grid-column:span 2">📖 Saberes enseñados: ${todos.join(' · ')||'—'}</span>
+        </div>`;
+      }
+      return `<div class="p-cont-row">
         <span style="font-weight:700">${m.materia}</span>
         <span style="color:#1a5c3a">${m.alcanzados.join(' · ')||'—'}</span>
         <span style="color:#c62828">${m.pendientes.join(' · ')||'—'}</span>
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   document.getElementById('rite-print-area').innerHTML=`
