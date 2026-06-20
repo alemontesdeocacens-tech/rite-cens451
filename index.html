@@ -139,6 +139,7 @@ tr:hover td{background:#fafaf8}
 .badge-apr{background:#e8f5ee;color:#1a5c3a}
 .badge-pen{background:#fdf0ee;color:#c0392b}
 .badge-sin{background:#f0f0ee;color:#5a5a55}
+.badge-curso{background:#e3f0fb;color:#1565c0}
 
 /* ===== INFO BOXES ===== */
 .info-box{background:var(--azul-claro);border:1px solid #b8d4f0;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--azul);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
@@ -1511,27 +1512,47 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const materiasAlumno=[];
 
   if(sheetData){
-    // ── Construcción desde el Sheet ──────────────────────────────────
-    // Agrupamos cierres por materia+cuatrimestre (cada fila de "Cierres" = una materia cursada)
+    // ── Construcción desde el Sheet (RITE "en vivo") ─────────────────
+    // Una materia aparece en el RITE en cuanto tiene trayectoria, cierre
+    // o contenidos cargados — no hace falta esperar al cierre del cuatrimestre.
+    const claveMateria=(materia,cuatri)=>`${materia}__${cuatri}`;
+    const materiasMap={}; // clave -> {materia,cuatri}
+
+    (sheetData.tray||[]).forEach(t=>{
+      if(String(t.curso_id)!==cid) return;
+      materiasMap[claveMateria(t.materia,t.cuatrimestre)]={materia:t.materia,cuatri:parseInt(t.cuatrimestre)};
+    });
     (sheetData.cierres||[]).forEach(c=>{
       if(String(c.curso_id)!==cid) return;
-      const cuatri=parseInt(c.cuatrimestre);
-      const materia=c.materia;
-      const nota=c.nota!==''&&c.nota!==undefined&&c.nota!==null?c.nota:null;
+      materiasMap[claveMateria(c.materia,c.cuatrimestre)]={materia:c.materia,cuatri:parseInt(c.cuatrimestre)};
+    });
+    (sheetData.contenidos||[]).forEach(co=>{
+      if(String(co.curso_id)!==cid) return;
+      materiasMap[claveMateria(co.materia,co.cuatrimestre)]={materia:co.materia,cuatri:parseInt(co.cuatrimestre)};
+    });
+
+    Object.values(materiasMap).forEach(({materia,cuatri})=>{
+      const cierreRow=(sheetData.cierres||[]).find(c=>
+        String(c.curso_id)===cid && c.materia===materia && String(c.cuatrimestre)===String(cuatri));
+      const nota=cierreRow&&cierreRow.nota!==''&&cierreRow.nota!==undefined&&cierreRow.nota!==null?cierreRow.nota:null;
 
       const trayRow=(sheetData.tray||[]).find(t=>
         String(t.curso_id)===cid && t.materia===materia && String(t.cuatrimestre)===String(cuatri));
       const tray=trayRow?trayRow.trayectoria:'—';
 
       const contRow=(sheetData.contenidos||[]).find(co=>
-        co.materia===materia && String(co.cuatrimestre)===String(cuatri));
+        String(co.curso_id)===cid && co.materia===materia && String(co.cuatrimestre)===String(cuatri));
       let conts=[];
       if(contRow){ try{ conts=JSON.parse(contRow.contenidos_json||'[]'); }catch(e){ conts=[]; } }
-      // Buscamos qué contenidos quedaron marcados para este alumno (guardados junto al cierre)
+
+      // Marcado por alumno (guardado junto al cierre). Si todavía no hubo
+      // cierre, los contenidos figuran como "pendientes" por defecto.
       let contData={};
-      try{ contData=c.contenidos_alumno?JSON.parse(c.contenidos_alumno):{}; }catch(e){ contData={}; }
+      if(cierreRow){
+        try{ contData=cierreRow.contenidos_alumno?JSON.parse(cierreRow.contenidos_alumno):{}; }catch(e){ contData={}; }
+      }
       const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
-      const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]!==undefined);
+      const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado');
 
       const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
       const recNotas=turnos.map(t=>{
@@ -1581,9 +1602,15 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
 
   function calcModulo(mats,proyNota){
     if(!mats.length) return {tray:'—',estado:'SIN DATOS'};
-    const pendientes=mats.filter(m=>m.nota&&parseInt(m.nota)<7);
-    const proyAprobado=proyNota===undefined||proyNota===null||(parseInt(proyNota)>=7);
-    if(!pendientes.length&&proyAprobado) return {tray:'TEL',estado:'APROBADO'};
+    const sinCerrar=mats.filter(m=>m.nota===null||m.nota===undefined);
+    const desaprobadas=mats.filter(m=>m.nota&&parseInt(m.nota)<7);
+    if(sinCerrar.length>0) {
+      // Todavía hay materias sin cierre: el módulo está en curso, no se puede dar por aprobado.
+      const conTED=mats.some(m=>m.tray==='TED');
+      return {tray:conTED?'TED':'TEP', estado:'EN CURSO'};
+    }
+    const proyOk=proyNota!==undefined&&proyNota!==null?parseInt(proyNota)>=7:true;
+    if(!desaprobadas.length&&proyOk) return {tray:'TEL',estado:'APROBADO'};
     const conTED=mats.some(m=>m.tray==='TED');
     if(conTED) return {tray:'TED',estado:'PENDIENTE'};
     return {tray:'TEP',estado:'PENDIENTE'};
@@ -1632,7 +1659,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   }
 
   function estadoMod(mod){
-    const cls=mod.estado==='APROBADO'?'badge-apr':'badge-pen';
+    const cls=mod.estado==='APROBADO'?'badge-apr':mod.estado==='EN CURSO'?'badge-curso':'badge-pen';
     const tCls=mod.tray==='TEL'?'badge-tel':mod.tray==='TEP'?'badge-tep':'badge-ted';
     return `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0 12px">
       <span class="badge ${tCls}">${mod.tray}</span>
