@@ -1701,13 +1701,24 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   }
 
   function contBoxPreview(mats){
-    return mats.filter(m=>m.alcanzados.length||m.pendientes.length).map(m=>`
-      <div class="rite-cont-box">
+    return mats.filter(m=>m.alcanzados.length||m.pendientes.length).map(m=>{
+      const cerrada=m.nota!==null&&m.nota!==undefined&&m.nota!=='';
+      if(!cerrada){
+        // Todavía no hay cierre/nota para esta materia: no corresponde juzgar
+        // qué alcanzó o no el alumno. Mostramos los temas como "enseñados".
+        const todos=[...m.alcanzados,...m.pendientes];
+        return `<div class="rite-cont-box">
+          <b>${m.materia}</b><br>
+          <span style="color:var(--texto2)">📖 Saberes enseñados: </span>${todos.join(' · ')}
+        </div>`;
+      }
+      return `<div class="rite-cont-box">
         <b>${m.materia}</b><br>
         ${m.alcanzados.length?`<span style="color:var(--verde)">✓ Alcanzados: </span>${m.alcanzados.join(' · ')}`:''}
         ${m.alcanzados.length&&m.pendientes.length?'<br>':''}
         ${m.pendientes.length?`<span style="color:var(--rojo)">⚠ Pendientes: </span>${m.pendientes.join(' · ')}`:''}
-      </div>`).join('');
+      </div>`;
+    }).join('');
   }
 
   function estadoMod(mod){
