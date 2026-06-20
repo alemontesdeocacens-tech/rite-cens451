@@ -1824,29 +1824,113 @@ function setupInformeCurso(){
   poblaCursoSel('inf-curso-sel');
   mostrarInformeCurso();
 }
-function mostrarInformeCurso(){
+
+async function mostrarInformeCurso(){
   const cid=document.getElementById('inf-curso-sel').value;
   const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  const cont=document.getElementById('inf-curso-content');
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando informe del curso…</div>';
+
+  let data=null;
+  try {
+    data=await api('getRiteCurso',{ciclo:cicloActual,cursoId:cid});
+  } catch(e){
+    console.warn('No se pudo traer el informe del curso desde el sheet:', e);
+  }
+
+  // ── Resumen por alumno (módulos 1 y 2) ──────────────────────────────
   const resumen=alumnos.map(a=>{
     let apr1=0,pen1=0,apr2=0,pen2=0,mat1=0,mat2=0;
-    Object.keys(datosLocales).forEach(k=>{
-      if(!k.startsWith('cierre_')) return;
-      const sin=k.replace('cierre_','');
-      const partes=sin.split('_');
-      if(partes[0]!==cid) return;
-      const q=parseInt(partes[partes.length-1].replace('Q',''));
-      const d=datosLocales[k][a.id];
-      if(!d||d.nota===null||d.nota===undefined) return;
-      const ok=parseInt(d.nota)>=7;
-      if(q===1){mat1++;if(ok)apr1++;else pen1++;}
-      else{mat2++;if(ok)apr2++;else pen2++;}
-    });
-    const pn1=((datosLocales[keyProyecto(cid,1)]||{})[a.id]||{}).nota;
-    const pn2=((datosLocales[keyProyecto(cid,2)]||{})[a.id]||{}).nota;
+    if(data){
+      (data.cierres||[]).forEach(c=>{
+        if(c.alumno_id!==a.id) return;
+        if(c.nota===''||c.nota===undefined||c.nota===null) return;
+        const ok=parseInt(c.nota)>=7;
+        if(String(c.cuatrimestre)==='1'){mat1++;if(ok)apr1++;else pen1++;}
+        else{mat2++;if(ok)apr2++;else pen2++;}
+      });
+    } else {
+      Object.keys(datosLocales).forEach(k=>{
+        if(!k.startsWith('cierre_')) return;
+        const sin=k.replace('cierre_','');
+        const partes=sin.split('_');
+        if(partes[0]!==cid) return;
+        const q=parseInt(partes[partes.length-1].replace('Q',''));
+        const d=datosLocales[k][a.id];
+        if(!d||d.nota===null||d.nota===undefined) return;
+        const ok=parseInt(d.nota)>=7;
+        if(q===1){mat1++;if(ok)apr1++;else pen1++;}
+        else{mat2++;if(ok)apr2++;else pen2++;}
+      });
+    }
+    const pn1=data
+      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.cuatrimestre)==='1'); return p&&p.nota!==''?p.nota:null; })()
+      : ((datosLocales[keyProyecto(cid,1)]||{})[a.id]||{}).nota;
+    const pn2=data
+      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.cuatrimestre)==='2'); return p&&p.nota!==''?p.nota:null; })()
+      : ((datosLocales[keyProyecto(cid,2)]||{})[a.id]||{}).nota;
     return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2};
   });
-  document.getElementById('inf-curso-content').innerHTML=`<div class="card">
-    <div class="section-label">Resumen · ${cursoNombre(cid)}</div>
+
+  // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
+  let bimestreHTML='';
+  if(data && (data.tray||[]).length){
+    const porMateria={};
+    data.tray.forEach(t=>{
+      const k=`${t.materia}__Q${t.cuatrimestre}`;
+      if(!porMateria[k]) porMateria[k]={materia:t.materia,cuatri:t.cuatrimestre,filas:[]};
+      const al=ALUMNOS_RAW.find(a=>a.id===t.alumno_id);
+      porMateria[k].filas.push({nombre:al?al.nombre:t.alumno_id,tray:t.trayectoria});
+    });
+    const grupos=Object.values(porMateria).sort((x,y)=>x.cuatri-y.cuatri||x.materia.localeCompare(y.materia));
+    if(grupos.length){
+      bimestreHTML=`<div class="card" style="margin-top:16px">
+        <div class="section-label">📘 Trayectorias del Bimestre — ${cursoNombre(cid)}</div>
+        ${grupos.map(g=>{
+          const cTel=g.filas.filter(f=>f.tray==='TEL').length;
+          const cTep=g.filas.filter(f=>f.tray==='TEP').length;
+          const cTed=g.filas.filter(f=>f.tray==='TED').length;
+          return `<div style="margin-bottom:14px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px">${g.materia} <span style="font-weight:400;color:var(--texto2)">· ${g.cuatri}° cuatrimestre</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--texto2)">
+              <span class="badge badge-tel">TEL: ${cTel}</span>
+              <span class="badge badge-tep">TEP: ${cTep}</span>
+              <span class="badge badge-ted">TED: ${cTed}</span>
+              <span style="align-self:center">(${g.filas.length} alumnos cargados)</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`;
+    }
+  }
+
+  // ── Temas / contenidos enseñados por materia ────────────────────────
+  let temasHTML='';
+  if(data && (data.contenidos||[]).length){
+    const conts=[...data.contenidos].sort((x,y)=>x.cuatrimestre-y.cuatrimestre||x.materia.localeCompare(y.materia));
+    temasHTML=`<div class="card" style="margin-top:16px">
+      <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
+      ${conts.map(c=>{
+        let lista=[];
+        try{ lista=JSON.parse(c.contenidos_json||'[]'); }catch(e){ lista=[]; }
+        if(!lista.length) return '';
+        return `<div style="margin-bottom:12px">
+          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${c.materia} <span style="font-weight:400;color:var(--texto2)">· ${c.cuatrimestre}° cuatrimestre</span></div>
+          <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--texto2);line-height:1.6">
+            ${lista.map(t=>`<li>${t}</li>`).join('')}
+          </ul>
+        </div>`;
+      }).join('')}
+    </div>`;
+  } else if(data){
+    temasHTML=`<div class="card" style="margin-top:16px">
+      <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
+      <div class="empty">Todavía no se cargaron temas para este curso.</div>
+    </div>`;
+  }
+
+  cont.innerHTML=`<div class="card">
+    <div class="section-label">Resumen general · ${cursoNombre(cid)}</div>
     <div class="tabla-wrap"><table>
       <thead><tr><th>Alumno/a</th><th>Módulo 1</th><th>Proy.1</th><th>Módulo 2</th><th>Proy.2</th><th></th></tr></thead>
       <tbody>
@@ -1860,7 +1944,9 @@ function mostrarInformeCurso(){
         </tr>`).join('')}
       </tbody>
     </table></div>
-  </div>`;
+  </div>
+  ${bimestreHTML}
+  ${temasHTML}`;
 }
 function irARite(cid,aid){
   go('s-rite-gen','');
