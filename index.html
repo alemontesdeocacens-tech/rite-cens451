@@ -790,6 +790,7 @@ let sesion = null;
 let datosLocales = {};
 let cicloActual = '2026';
 let materiasCache = [];
+let riteActualNombre = ''; // nombre del alumno del último RITE generado (para nombrar el PDF)
 
 // =====================================================================
 // API CALLS CON FALLBACK LOCAL
@@ -1548,6 +1549,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const curso=CURSOS.find(c=>c.id===cid);
   const alumno=ALUMNOS_RAW.find(a=>a.id===aid);
   if(!alumno||!curso){ toast('Alumno no encontrado','err'); return; }
+  riteActualNombre=alumno.nombre; // usado para nombrar el PDF al imprimir/guardar
 
   const contenedor=document.getElementById(contenedorId);
   const loadingHTML='<div class="loading"><div class="spinner"></div>Generando RITE…</div>';
@@ -1890,7 +1892,20 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
     </div>`;
 }
 
-function imprimirRite(){ window.print(); }
+function imprimirRite(){
+  const tituloOriginal=document.title;
+  if(riteActualNombre){
+    // Limpiamos el nombre para que sirva como nombre de archivo (sin tildes raras, comas, etc.)
+    const nombreArchivo=riteActualNombre
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // saca acentos
+      .replace(/[^a-zA-Z0-9 ]/g,'') // saca comas y símbolos
+      .trim().replace(/\s+/g,'_');
+    document.title=`RITE_${cicloActual}_${nombreArchivo}`;
+  }
+  window.print();
+  // Restauramos el título original para no dejar pegado el nombre del alumno en la pestaña
+  setTimeout(()=>{ document.title=tituloOriginal; }, 1000);
+}
 
 // =====================================================================
 // INFORME POR CURSO
