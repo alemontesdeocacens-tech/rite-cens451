@@ -438,10 +438,24 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Recuperaciones</div>
       <div class="mc-desc">Agosto · Diciembre · Febrero</div>
     </button>
+    <button class="menu-card" onclick="go('s-doc-ver-curso','')">
+      <div class="mc-icon">📊</div>
+      <div class="mc-title">Ver notas del curso</div>
+      <div class="mc-desc">Todas las materias del curso</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
   </div>
+</div>
+
+<!-- ============ DOCENTE — VER NOTAS DEL CURSO (todas las materias) ============ -->
+<div class="screen" id="s-doc-ver-curso">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt">Notas del curso</div><div class="ns" id="doc-vc-sub"></div></div>
+  </div>
+  <div id="doc-vc-content"></div>
 </div>
 
 <!-- ============ BIMESTRE ============ -->
@@ -836,13 +850,19 @@ function toast(msg, tipo='ok'){
 function hoy(){
   return new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
 }
+function cursosVisibles(){
+  // Directivo/a ve todos los cursos. Preceptor/a solo ve los cursos donde
+  // figura como preceptor/a asignado/a (campo CURSOS[].preceptor).
+  if(sesion.rol==='preceptor') return CURSOS.filter(c=>c.preceptor===sesion.nombre);
+  return CURSOS;
+}
 function poblaCursoSel(selId, todoOpt=false){
   const sel=document.getElementById(selId);
   if(!sel)return;
   const prev=sel.value;
   sel.innerHTML='';
   if(todoOpt) sel.innerHTML='<option value="">— Todos —</option>';
-  CURSOS.forEach(c=>{
+  cursosVisibles().forEach(c=>{
     const o=document.createElement('option');
     o.value=c.id; o.textContent=c.nombre+' ('+c.preceptor+')';
     sel.appendChild(o);
@@ -965,6 +985,7 @@ function go(screenId, arg){
     's-cierre':setupCierre,
     's-contenidos':setupContenidos,
     's-recuperaciones':setupRecuperaciones,
+    's-doc-ver-curso':setupDocVerCurso,
     's-menu-prec':setupMenuPrec,
     's-rite-gen':setupRiteGen,
     's-informe-curso':setupInformeCurso,
@@ -1374,6 +1395,20 @@ function setupRecuperaciones(){
   }
   document.getElementById('rec-content').innerHTML=html;
 }
+
+// =====================================================================
+// DOCENTE — VER NOTAS DEL CURSO (todas las materias, mismo curso del login)
+// =====================================================================
+async function setupDocVerCurso(){
+  const cid=sesion.cursoId;
+  document.getElementById('doc-vc-sub').textContent=cursoNombre(cid);
+  const cont=document.getElementById('doc-vc-content');
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando notas del curso…</div>';
+  // riteBtnOnclick=null: el docente no tiene acceso a "Generar RITE" (pantalla de preceptor/directivo),
+  // así que ocultamos esa columna/botón en este informe.
+  cont.innerHTML=await construirInformeCursoHTML(cid, null);
+}
+
 function actualizarRecup(inp){
   const id=`rec-estado-${inp.dataset.turno}-${inp.dataset.id}`;
   const el=document.getElementById(id);
@@ -1405,11 +1440,16 @@ function setupMenuPrec(){
   document.getElementById('prec-header-title').textContent=sesion.rol==='directivo'?'Directivo/a':'Preceptoría';
   document.getElementById('prec-header-user').textContent=sesion.nombre;
   document.getElementById('prec-header-ciclo').textContent=cicloActual;
-  const total=ALUMNOS_RAW.length;
+  const cursosProp=cursosVisibles();
+  const cursosIds=new Set(cursosProp.map(c=>c.id));
+  const alumnosProp=sesion.rol==='preceptor'?ALUMNOS_RAW.filter(a=>cursosIds.has(a.curso)):ALUMNOS_RAW;
+  const alumnosIds=new Set(alumnosProp.map(a=>a.id));
+  const total=alumnosProp.length;
   let aprob=0,pend=0,notas=0;
   Object.keys(datosLocales).forEach(k=>{
     if(!k.startsWith('cierre_')) return;
-    Object.values(datosLocales[k]).forEach(v=>{
+    Object.entries(datosLocales[k]).forEach(([aid,v])=>{
+      if(sesion.rol==='preceptor'&&!alumnosIds.has(aid)) return;
       if(v.nota!==null&&v.nota!==undefined){ notas++; if(parseInt(v.nota)>=7)aprob++; else pend++; }
     });
   });
@@ -1417,7 +1457,7 @@ function setupMenuPrec(){
     <div class="stat"><div class="sn">${total}</div><div class="sl">Alumnos</div></div>
     <div class="stat verde"><div class="sn">${aprob}</div><div class="sl">Aprobados</div></div>
     <div class="stat rojo"><div class="sn">${pend}</div><div class="sl">Pendientes</div></div>
-    <div class="stat azul"><div class="sn">${CURSOS.length}</div><div class="sl">Cursos</div></div>
+    <div class="stat azul"><div class="sn">${cursosProp.length}</div><div class="sl">Cursos</div></div>
   `;
 }
 
@@ -1835,9 +1875,15 @@ function setupInformeCurso(){
 
 async function mostrarInformeCurso(){
   const cid=document.getElementById('inf-curso-sel').value;
-  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const cont=document.getElementById('inf-curso-content');
   cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando informe del curso…</div>';
+  cont.innerHTML=await construirInformeCursoHTML(cid, (cid,aid)=>`irARite('${cid}','${aid}')`);
+}
+
+// Construye el HTML del informe (resumen + bimestre + temas) para un curso dado.
+// riteBtnOnclick(cid,aid) define qué hace el botón "RITE" de cada fila (varía según el rol que lo use).
+async function construirInformeCursoHTML(cid, riteBtnOnclick){
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
   let data=null;
   try {
@@ -1948,10 +1994,10 @@ async function mostrarInformeCurso(){
     </div>`;
   }
 
-  cont.innerHTML=`<div class="card">
+  return `<div class="card">
     <div class="section-label">Resumen general · ${cursoNombre(cid)}</div>
     <div class="tabla-wrap"><table>
-      <thead><tr><th>Alumno/a</th><th>Bim. 1</th><th>Módulo 1</th><th>Proy.1</th><th>Bim. 2</th><th>Módulo 2</th><th>Proy.2</th><th></th></tr></thead>
+      <thead><tr><th>Alumno/a</th><th>Bim. 1</th><th>Módulo 1</th><th>Proy.1</th><th>Bim. 2</th><th>Módulo 2</th><th>Proy.2</th>${riteBtnOnclick?'<th></th>':''}</tr></thead>
       <tbody>
         ${resumen.map(r=>{
           const celdaTray=(lista)=>{
@@ -1968,7 +2014,7 @@ async function mostrarInformeCurso(){
           <td>${celdaTray(r.tray2)}</td>
           <td>${r.mat2===0?'<span class="badge badge-sin">—</span>':r.pen2===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen2+' pend.</span>'}</td>
           <td>${notaBadge(r.pn2)}</td>
-          <td><button class="btn btn-secondary btn-sm" onclick="irARite('${cid}','${r.a.id}')">RITE</button></td>
+          ${riteBtnOnclick?`<td><button class="btn btn-secondary btn-sm" onclick="${riteBtnOnclick(cid,r.a.id)}">RITE</button></td>`:''}
         </tr>`;
         }).join('')}
       </tbody>
@@ -1977,6 +2023,7 @@ async function mostrarInformeCurso(){
   ${bimestreHTML}
   ${temasHTML}`;
 }
+
 function irARite(cid,aid){
   go('s-rite-gen','');
   setTimeout(()=>{
