@@ -622,6 +622,17 @@ tr:hover td{background:#fafaf8}
   <div id="inf-curso-content"></div>
 </div>
 
+<!-- ============ INFORME POR CURSO — ACCESO PÚBLICO (sin login, para profesores desde Asistencia) ============ -->
+<div class="screen" id="s-informe-publico">
+  <div class="nav no-print">
+    <div class="nav-info"><div class="nt">Informe por curso</div><div class="ns">Sistema RITE · CENS Nº 451</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field"><label>Seleccioná el curso</label><select id="infpub-curso-sel" onchange="mostrarInformePublico()"></select></div>
+  </div>
+  <div id="infpub-curso-content"></div>
+</div>
+
 <!-- ============ VER NOTAS ============ -->
 <div class="screen" id="s-ver-notas">
   <div class="nav no-print">
@@ -854,7 +865,9 @@ function hoy(){
 function cursosVisibles(){
   // Directivo/a ve todos los cursos. Preceptor/a solo ve los cursos donde
   // figura como preceptor/a asignado/a (campo CURSOS[].preceptor).
-  if(sesion.rol==='preceptor') return CURSOS.filter(c=>c.preceptor===sesion.nombre);
+  // Sin sesión activa (acceso público de "Informe por curso" para profesores
+  // desde Asistencia) también se ven todos los cursos.
+  if(sesion&&sesion.rol==='preceptor') return CURSOS.filter(c=>c.preceptor===sesion.nombre);
   return CURSOS;
 }
 function poblaCursoSel(selId, todoOpt=false){
@@ -990,6 +1003,7 @@ function go(screenId, arg){
     's-menu-prec':setupMenuPrec,
     's-rite-gen':setupRiteGen,
     's-informe-curso':setupInformeCurso,
+    's-informe-publico':setupInformePublico,
     's-ver-notas':setupVerNotas,
     's-alumnos-curso':setupAlumnosCurso,
     's-menu-dicyt':setupMenuDicyt,
@@ -1921,6 +1935,27 @@ async function mostrarInformeCurso(){
   cont.innerHTML=await construirInformeCursoHTML(cid, (cid,aid)=>`irARite('${cid}','${aid}')`);
 }
 
+// Versión de acceso público (sin login), para el botón "Informe por curso"
+// del panel de Profesor en la app de Asistencia. Solo lectura: sin botón
+// "RITE" (que requiere sesión de preceptor/directivo para editar/generar).
+function setupInformePublico(){
+  const sel=document.getElementById('infpub-curso-sel');
+  sel.innerHTML='';
+  CURSOS.forEach(c=>{
+    const o=document.createElement('option');
+    o.value=c.id; o.textContent=c.nombre+' ('+c.preceptor+')';
+    sel.appendChild(o);
+  });
+  mostrarInformePublico();
+}
+
+async function mostrarInformePublico(){
+  const cid=document.getElementById('infpub-curso-sel').value;
+  const cont=document.getElementById('infpub-curso-content');
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando informe del curso…</div>';
+  cont.innerHTML=await construirInformeCursoHTML(cid, null);
+}
+
 // Construye el HTML del informe (resumen + bimestre + temas) para un curso dado.
 // riteBtnOnclick(cid,aid) define qué hace el botón "RITE" de cada fila (varía según el rol que lo use).
 async function construirInformeCursoHTML(cid, riteBtnOnclick){
@@ -2217,6 +2252,37 @@ async function init(){
   showOverlay('Cargando alumnos…');
   await cargarAlumnos();
   hideOverlay();
+
+  // Auto-login: si venimos del botón "RITE" de la app de Asistencia
+  // (?from=asistencia), entramos directo sin pedir clave de nuevo, ya que
+  // el acceso a Asistencia ya está validado del otro lado.
+  // - Si viene "?preceptor=NOMBRE", logueamos a ESE preceptor específico
+  //   (cada preceptor solo ve sus propios cursos asignados).
+  // - Si no, logueamos como Directivo/a (acceso completo).
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('from')==='asistencia'){
+    // Vista pública de solo lectura para Profesores (sin sesión/clave):
+    // "Informe por curso", igual que ve la directora pero sin editar nada.
+    if(params.get('view')==='informe-curso'){
+      window.history.replaceState({},'',window.location.pathname);
+      go('s-informe-publico','');
+      return;
+    }
+    const nombrePrec=params.get('preceptor');
+    const norm=s=>(s||'').trim().toLowerCase();
+    let user;
+    if(nombrePrec){
+      user=USUARIOS_FIJOS.find(u=>u.rol==='preceptor'&&norm(u.nombre)===norm(nombrePrec));
+    } else {
+      user=USUARIOS_FIJOS.find(u=>u.rol==='directivo');
+    }
+    if(user){
+      sesion={rol:user.rol,nombre:user.nombre};
+      window.history.replaceState({},'',window.location.pathname);
+      go('s-menu-prec','');
+      return;
+    }
+  }
   document.getElementById('s-inicio').classList.add('active');
 }
 
