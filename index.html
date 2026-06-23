@@ -2010,24 +2010,26 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
   });
 
   // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
+  // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
   let bimestreHTML='';
-  if(data && (data.tray||[]).length){
+  {
+    const trayData = data ? (data.tray||[]) : [];
     const porMateria={};
-    data.tray.forEach(t=>{
+    trayData.forEach(t=>{
       const k=`${t.materia}__Q${t.cuatrimestre}`;
       if(!porMateria[k]) porMateria[k]={materia:t.materia,cuatri:t.cuatrimestre,filas:[]};
       const al=ALUMNOS_RAW.find(a=>a.id===t.alumno_id);
       porMateria[k].filas.push({nombre:al?al.nombre:t.alumno_id,tray:t.trayectoria});
     });
     const grupos=Object.values(porMateria).sort((x,y)=>x.cuatri-y.cuatri||x.materia.localeCompare(y.materia));
-    if(grupos.length){
-      bimestreHTML=`<div class="card" style="margin-top:16px">
-        <div class="section-label">📘 Trayectorias del Bimestre — ${cursoNombre(cid)}</div>
-        ${grupos.map(g=>{
+    const materiasUnicas=[...new Set(grupos.map(g=>g.materia))].sort((a,b)=>a.localeCompare(b));
+    const selOpts=materiasUnicas.map(m=>`<option value="${m}">${m}</option>`).join('');
+    const cuerpoGrupos = grupos.length
+      ? grupos.map(g=>{
           const cTel=g.filas.filter(f=>f.tray==='TEL').length;
           const cTep=g.filas.filter(f=>f.tray==='TEP').length;
           const cTed=g.filas.filter(f=>f.tray==='TED').length;
-          return `<div style="margin-bottom:14px">
+          return `<div class="bim-grupo" data-materia="${g.materia}" style="margin-bottom:14px">
             <div style="font-weight:600;font-size:13px;margin-bottom:4px">${g.materia} <span style="font-weight:400;color:var(--texto2)">· ${g.cuatri}° cuatrimestre</span></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--texto2)">
               <span class="badge badge-tel">TEL: ${cTel}</span>
@@ -2036,33 +2038,42 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
               <span style="align-self:center">(${g.filas.length} alumnos cargados)</span>
             </div>
           </div>`;
-        }).join('')}
-      </div>`;
-    }
+        }).join('')
+      : `<div class="empty">Todavía no se cargaron trayectorias para este curso.</div>`;
+    bimestreHTML=`<div class="card" style="margin-top:16px">
+      <div class="section-label">📘 Trayectorias del Bimestre — ${cursoNombre(cid)}</div>
+      ${grupos.length ? `<div class="no-print" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--texto2);display:block;margin-bottom:4px">Filtrar por materia</label>
+        <select id="bim-materia-fil" onchange="filtrarBimestrePorMateria()" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:8px;font-family:inherit;font-size:13px;background:var(--blanco);color:var(--texto);outline:none;cursor:pointer;max-width:100%">
+          <option value="">— Todas las materias —</option>
+          ${selOpts}
+        </select>
+      </div>` : ''}
+      <div id="bim-grupos-wrap">${cuerpoGrupos}</div>
+    </div>`;
   }
 
   // ── Temas / contenidos enseñados por materia ────────────────────────
   let temasHTML='';
-  if(data && (data.contenidos||[]).length){
-    const conts=[...data.contenidos].sort((x,y)=>x.cuatrimestre-y.cuatrimestre||x.materia.localeCompare(y.materia));
+  {
+    const contData = data ? (data.contenidos||[]) : [];
+    const conts=[...contData].sort((x,y)=>x.cuatrimestre-y.cuatrimestre||x.materia.localeCompare(y.materia));
+    const cuerpoTemas = conts.length
+      ? conts.map(c=>{
+          let lista=[];
+          try{ lista=JSON.parse(c.contenidos_json||'[]'); }catch(e){ lista=[]; }
+          if(!lista.length) return '';
+          return `<div style="margin-bottom:12px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px">${c.materia} <span style="font-weight:400;color:var(--texto2)">· ${c.cuatrimestre}° cuatrimestre</span></div>
+            <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--texto2);line-height:1.6">
+              ${lista.map(t=>`<li>${t}</li>`).join('')}
+            </ul>
+          </div>`;
+        }).join('')
+      : `<div class="empty">Todavía no se cargaron temas para este curso.</div>`;
     temasHTML=`<div class="card" style="margin-top:16px">
       <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
-      ${conts.map(c=>{
-        let lista=[];
-        try{ lista=JSON.parse(c.contenidos_json||'[]'); }catch(e){ lista=[]; }
-        if(!lista.length) return '';
-        return `<div style="margin-bottom:12px">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${c.materia} <span style="font-weight:400;color:var(--texto2)">· ${c.cuatrimestre}° cuatrimestre</span></div>
-          <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--texto2);line-height:1.6">
-            ${lista.map(t=>`<li>${t}</li>`).join('')}
-          </ul>
-        </div>`;
-      }).join('')}
-    </div>`;
-  } else if(data){
-    temasHTML=`<div class="card" style="margin-top:16px">
-      <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
-      <div class="empty">Todavía no se cargaron temas para este curso.</div>
+      ${cuerpoTemas}
     </div>`;
   }
 
