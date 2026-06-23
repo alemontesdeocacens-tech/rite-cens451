@@ -291,10 +291,6 @@ tr:hover td{background:#fafaf8}
       <div class="role-icon">🎓</div>
       <div class="role-text"><div class="rt">Estudiante</div><div class="rs">Descargá tu RITE con tu DNI</div></div>
     </button>
-    <button class="role-btn" onclick="go('s-login','docente')">
-      <div class="role-icon">📚</div>
-      <div class="role-text"><div class="rt">Docente</div><div class="rs">Cargo notas y contenidos de mi materia</div></div>
-    </button>
     <button class="role-btn" onclick="go('s-login','preceptor')">
       <div class="role-icon">📋</div>
       <div class="role-text"><div class="rt">Preceptor/a</div><div class="rs">Genero RITE e informes por alumno y curso</div></div>
@@ -2262,10 +2258,15 @@ async function init(){
   const params=new URLSearchParams(window.location.search);
   if(params.get('from')==='asistencia'){
     // Vista pública de solo lectura para Profesores (sin sesión/clave):
-    // "Informe por curso", igual que ve la directora pero sin editar nada.
     if(params.get('view')==='informe-curso'){
       window.history.replaceState({},'',window.location.pathname);
       go('s-informe-publico','');
+      return;
+    }
+    // Login directo de docente para cargar notas (desde botón en Asistencia):
+    if(params.get('view')==='login-docente'){
+      window.history.replaceState({},'',window.location.pathname);
+      go('s-login','docente');
       return;
     }
     const nombrePrec=params.get('preceptor');
