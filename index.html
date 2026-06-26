@@ -2010,24 +2010,26 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
   });
 
   // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
+  // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
   let bimestreHTML='';
-  if(data && (data.tray||[]).length){
+  {
+    const trayData = data ? (data.tray||[]) : [];
     const porMateria={};
-    data.tray.forEach(t=>{
+    trayData.forEach(t=>{
       const k=`${t.materia}__Q${t.cuatrimestre}`;
       if(!porMateria[k]) porMateria[k]={materia:t.materia,cuatri:t.cuatrimestre,filas:[]};
       const al=ALUMNOS_RAW.find(a=>a.id===t.alumno_id);
       porMateria[k].filas.push({nombre:al?al.nombre:t.alumno_id,tray:t.trayectoria});
     });
     const grupos=Object.values(porMateria).sort((x,y)=>x.cuatri-y.cuatri||x.materia.localeCompare(y.materia));
-    if(grupos.length){
-      bimestreHTML=`<div class="card" style="margin-top:16px">
-        <div class="section-label">📘 Trayectorias del Bimestre — ${cursoNombre(cid)}</div>
-        ${grupos.map(g=>{
+    const materiasUnicas=[...new Set(grupos.map(g=>g.materia))].sort((a,b)=>a.localeCompare(b));
+    const selOpts=materiasUnicas.map(m=>`<option value="${m}">${m}</option>`).join('');
+    const cuerpoGrupos = grupos.length
+      ? grupos.map(g=>{
           const cTel=g.filas.filter(f=>f.tray==='TEL').length;
           const cTep=g.filas.filter(f=>f.tray==='TEP').length;
           const cTed=g.filas.filter(f=>f.tray==='TED').length;
-          return `<div style="margin-bottom:14px">
+          return `<div class="bim-grupo" data-materia="${g.materia}" style="margin-bottom:14px">
             <div style="font-weight:600;font-size:13px;margin-bottom:4px">${g.materia} <span style="font-weight:400;color:var(--texto2)">· ${g.cuatri}° cuatrimestre</span></div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--texto2)">
               <span class="badge badge-tel">TEL: ${cTel}</span>
@@ -2036,34 +2038,106 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
               <span style="align-self:center">(${g.filas.length} alumnos cargados)</span>
             </div>
           </div>`;
-        }).join('')}
-      </div>`;
-    }
+        }).join('')
+      : `<div class="empty">Todavía no se cargaron trayectorias para este curso.</div>`;
+    bimestreHTML=`<div class="card" style="margin-top:16px">
+      <div class="section-label">📘 Trayectorias del Bimestre — ${cursoNombre(cid)}</div>
+      ${grupos.length ? `<div class="no-print" style="margin-bottom:12px">
+        <label style="font-size:12px;color:var(--texto2);display:block;margin-bottom:4px">Filtrar por materia</label>
+        <select id="bim-materia-fil" onchange="filtrarBimestrePorMateria()" style="padding:6px 10px;border:1.5px solid var(--borde);border-radius:8px;font-family:inherit;font-size:13px;background:var(--blanco);color:var(--texto);outline:none;cursor:pointer;max-width:100%">
+          <option value="">— Todas las materias —</option>
+          ${selOpts}
+        </select>
+      </div>` : ''}
+      <div id="bim-grupos-wrap">${cuerpoGrupos}</div>
+    </div>`;
   }
 
   // ── Temas / contenidos enseñados por materia ────────────────────────
   let temasHTML='';
-  if(data && (data.contenidos||[]).length){
-    const conts=[...data.contenidos].sort((x,y)=>x.cuatrimestre-y.cuatrimestre||x.materia.localeCompare(y.materia));
+  {
+    const contData = data ? (data.contenidos||[]) : [];
+    const conts=[...contData].sort((x,y)=>x.cuatrimestre-y.cuatrimestre||x.materia.localeCompare(y.materia));
+    const cuerpoTemas = conts.length
+      ? conts.map(c=>{
+          let lista=[];
+          try{ lista=JSON.parse(c.contenidos_json||'[]'); }catch(e){ lista=[]; }
+          if(!lista.length) return '';
+          return `<div style="margin-bottom:12px">
+            <div style="font-weight:600;font-size:13px;margin-bottom:4px">${c.materia} <span style="font-weight:400;color:var(--texto2)">· ${c.cuatrimestre}° cuatrimestre</span></div>
+            <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--texto2);line-height:1.6">
+              ${lista.map(t=>`<li>${t}</li>`).join('')}
+            </ul>
+          </div>`;
+        }).join('')
+      : `<div class="empty">Todavía no se cargaron temas para este curso.</div>`;
     temasHTML=`<div class="card" style="margin-top:16px">
       <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
-      ${conts.map(c=>{
-        let lista=[];
-        try{ lista=JSON.parse(c.contenidos_json||'[]'); }catch(e){ lista=[]; }
-        if(!lista.length) return '';
-        return `<div style="margin-bottom:12px">
-          <div style="font-weight:600;font-size:13px;margin-bottom:4px">${c.materia} <span style="font-weight:400;color:var(--texto2)">· ${c.cuatrimestre}° cuatrimestre</span></div>
-          <ul style="margin:0;padding-left:18px;font-size:12.5px;color:var(--texto2);line-height:1.6">
-            ${lista.map(t=>`<li>${t}</li>`).join('')}
-          </ul>
-        </div>`;
-      }).join('')}
+      ${cuerpoTemas}
     </div>`;
-  } else if(data){
-    temasHTML=`<div class="card" style="margin-top:16px">
-      <div class="section-label">📚 Temas enseñados — ${cursoNombre(cid)}</div>
-      <div class="empty">Todavía no se cargaron temas para este curso.</div>
-    </div>`;
+  }
+
+  // ── Mejores promedios (solo 2° y 3° año) ────────────────────────────
+  let promediosHTML = '';
+  const cursoObj = CURSOS.find(c => c.id === cid);
+  const esSegundo = cursoObj && cursoObj.nombre.match(/^2°/);
+  const esTercero = cursoObj && cursoObj.nombre.match(/^3°/);
+  if (esSegundo || esTercero) {
+    let promedios = [];
+    if (data) {
+      promedios = alumnos.map(a => {
+        const cierresAlumno = (data.cierres || []).filter(c =>
+          c.alumno_id === a.id && c.nota !== '' && c.nota !== undefined && c.nota !== null
+        );
+        const recupsAlumno = (data.recups || []).filter(r =>
+          r.alumno_id === a.id && r.nota !== '' && r.nota !== undefined && r.nota !== null
+        );
+        if (!cierresAlumno.length) return null;
+        let sumaNotas = 0, totalMaterias = 0, todasAprobadas = true;
+        cierresAlumno.forEach(c => {
+          const notaCierre = parseInt(c.nota);
+          if (isNaN(notaCierre)) { todasAprobadas = false; return; }
+          if (notaCierre >= 7) {
+            sumaNotas += notaCierre; totalMaterias++;
+          } else {
+            const recup = recupsAlumno
+              .filter(r => r.materia === c.materia && String(r.cuatrimestre) === String(c.cuatrimestre))
+              .sort((x, y) => ({ 'Agosto':1,'Diciembre':2,'Febrero':3 }[x.turno]||9) - ({ 'Agosto':1,'Diciembre':2,'Febrero':3 }[y.turno]||9))
+              .find(r => parseInt(r.nota) >= 7);
+            if (recup) { sumaNotas += parseInt(recup.nota); totalMaterias++; }
+            else todasAprobadas = false;
+          }
+        });
+        if (!todasAprobadas || totalMaterias === 0) return null;
+        return { alumno: a, promedio: sumaNotas / totalMaterias, totalMaterias };
+      }).filter(Boolean);
+      promedios.sort((x, y) => y.promedio - x.promedio);
+    }
+    const medalias = ['🥇','🥈','🥉'];
+    if (promedios.length) {
+      promediosHTML = `<div class="card" style="margin-top:16px;border-left:4px solid #1a8754">
+        <div class="section-label" style="color:#1a5c3a">🏆 Mejores promedios — ${cursoNombre(cid)}</div>
+        <div style="font-size:12px;color:var(--texto2);margin-bottom:10px">
+          Alumnos con <strong>todas las materias aprobadas</strong> (≥7 en cuatrimestre o recuperación) · Se actualiza con cada nota cargada.
+        </div>
+        <div class="tabla-wrap"><table>
+          <thead><tr><th style="text-align:center">#</th><th>Alumno/a</th><th style="text-align:center">Materias</th><th style="text-align:center">Promedio anual</th></tr></thead>
+          <tbody>
+            ${promedios.map((p, i) => `<tr style="${i < 3 ? 'font-weight:600' : ''}">
+              <td style="text-align:center;font-size:16px">${medalias[i] || (i+1)}</td>
+              <td class="td-nombre">${p.alumno.nombre}</td>
+              <td style="text-align:center;color:var(--texto2);font-size:12px">${p.totalMaterias}</td>
+              <td style="text-align:center"><span class="badge badge-apr" style="font-size:14px;padding:4px 10px">${p.promedio.toFixed(2)}</span></td>
+            </tr>`).join('')}
+          </tbody>
+        </table></div>
+      </div>`;
+    } else {
+      promediosHTML = `<div class="card" style="margin-top:16px;border-left:4px solid #1a8754">
+        <div class="section-label" style="color:#1a5c3a">🏆 Mejores promedios — ${cursoNombre(cid)}</div>
+        <div class="empty">Aún no hay alumnos con todas las materias aprobadas en este curso.</div>
+      </div>`;
+    }
   }
 
   return `<div class="card">
@@ -2093,7 +2167,15 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
     </table></div>
   </div>
   ${bimestreHTML}
-  ${temasHTML}`;
+  ${temasHTML}
+  ${promediosHTML}`;
+}
+
+function filtrarBimestrePorMateria(){
+  const val = document.getElementById('bim-materia-fil')?.value || '';
+  document.querySelectorAll('#bim-grupos-wrap .bim-grupo').forEach(div => {
+    div.style.display = (!val || div.dataset.materia === val) ? '' : 'none';
+  });
 }
 
 function irARite(cid,aid){
@@ -2111,50 +2193,59 @@ function irARite(cid,aid){
 // =====================================================================
 function setupVerNotas(){
   poblaCursoSel('vn-curso',true);
-  const materias=new Set();
-  Object.keys(datosLocales).forEach(k=>{
-    if(!k.startsWith('cierre_')) return;
-    const sin=k.replace('cierre_','');
-    const partes=sin.split('_');
-    const mat=partes.slice(1,-1).join(' ');
-    if(mat) materias.add(mat);
-  });
-  const matSel=document.getElementById('vn-materia');
-  matSel.innerHTML='<option value="">— Todas —</option>';
-  [...materias].sort().forEach(m=>{
-    matSel.innerHTML+=`<option value="${m}">${m}</option>`;
-  });
+  actualizarMateriasVerNotas();
   filtrarNotas();
 }
-function filtrarNotas(){
-  const cid=document.getElementById('vn-curso').value;
-  const mat=document.getElementById('vn-materia').value;
-  const rows=[];
-  Object.keys(datosLocales).forEach(k=>{
-    if(!k.startsWith('cierre_')) return;
-    const sin=k.replace('cierre_','');
-    const partes=sin.split('_');
-    const q=parseInt(partes[partes.length-1].replace('Q',''));
-    const cursoPart=partes[0];
-    const materia=partes.slice(1,-1).join(' ');
-    if(cid&&cursoPart!==cid) return;
-    if(mat&&materia!==mat) return;
-    const cierre=datosLocales[k];
-    Object.keys(cierre).forEach(aid=>{
-      const d=cierre[aid];
-      if(d.nota===null||d.nota===undefined) return;
-      rows.push({curso:cursoNombre(cursoPart),materia,q,alumno:alumnoNombre(aid),nota:d.nota});
-    });
-  });
-  if(!rows.length){
-    document.getElementById('vn-content').innerHTML='<div class="empty">Sin notas cargadas con esos filtros.</div>';
+function actualizarMateriasVerNotas(){
+  const cid = document.getElementById('vn-curso')?.value || '';
+  const cursoObj = CURSOS.find(c => c.id === cid);
+  // Determinar el año del curso (ej: "1°", "2°", "3°")
+  const anioMatch = cursoObj ? cursoObj.nombre.match(/^(\d+)°/) : null;
+  const anio = anioMatch ? anioMatch[1] : '';
+  // Filtrar materiasCache por año si se puede, si no mostrar todas
+  let lista = materiasCache;
+  if(anio) lista = lista.filter(m => String(m.anio) === anio);
+  const matSel = document.getElementById('vn-materia');
+  const nombres = [...new Set(lista.map(m => m.nombre))].sort((a,b) => a.localeCompare(b));
+  matSel.innerHTML = '<option value="">— Todas —</option>';
+  nombres.forEach(m => { matSel.innerHTML += `<option value="${m}">${m}</option>`; });
+}
+async function filtrarNotas(){
+  actualizarMateriasVerNotas();
+  const cid = document.getElementById('vn-curso').value;
+  const mat = document.getElementById('vn-materia').value;
+  const el = document.getElementById('vn-content');
+  el.innerHTML = '<div class="empty">Cargando notas desde el servidor...</div>';
+  let data;
+  try {
+    data = await api('getRiteCurso', {ciclo: cicloActual, cursoId: cid});
+  } catch(e) {
+    el.innerHTML = '<div class="empty">Error al conectar con el servidor.</div>';
     return;
   }
-  document.getElementById('vn-content').innerHTML=`<div class="card"><div class="tabla-wrap"><table>
-    <thead><tr><th>Curso</th><th>Materia</th><th>Cuatrim.</th><th>Alumno/a</th><th>Nota</th></tr></thead>
+  const cierres = data ? (data.cierres || []) : [];
+  const rows = cierres
+    .filter(c => c.nota !== null && c.nota !== undefined && c.nota !== '')
+    .filter(c => !mat || c.materia === mat)
+    .map(c => ({
+      curso: cursoNombre(cid),
+      materia: c.materia,
+      q: c.cuatrimestre,
+      alumno: alumnoNombre(c.alumno_id),
+      nota: c.nota
+    }))
+    .sort((a,b) => a.q - b.q || a.materia.localeCompare(b.materia) || a.alumno.localeCompare(b.alumno));
+  if(!rows.length){
+    el.innerHTML = '<div class="empty">Sin notas cargadas con esos filtros.</div>';
+    return;
+  }
+  el.innerHTML = `<div class="card"><div class="tabla-wrap"><table>
+    <thead><tr><th>Cuatrim.</th><th>Materia</th><th>Alumno/a</th><th>Nota</th></tr></thead>
     <tbody>${rows.map(r=>`<tr>
-      <td>${r.curso}</td><td>${r.materia}</td><td>${r.q}°</td>
-      <td class="td-nombre">${r.alumno}</td><td>${notaBadge(r.nota)}</td>
+      <td style="text-align:center">${r.q}°</td>
+      <td>${r.materia}</td>
+      <td class="td-nombre">${r.alumno}</td>
+      <td>${notaBadge(r.nota)}</td>
     </tr>`).join('')}</tbody>
   </table></div></div>`;
 }
