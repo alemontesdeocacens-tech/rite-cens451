@@ -2210,11 +2210,15 @@ async function cargarNotasVerNotas(){
     el.innerHTML = '<div class="empty">Error al conectar con el servidor.</div>';
     return;
   }
-  // Poblar selector de materias con las que realmente tienen notas en este curso
+  // Poblar selector con materias que tienen trayectorias O notas de cierre
   const cierres = _vnData ? (_vnData.cierres || []) : [];
+  const tray = _vnData ? (_vnData.tray || []) : [];
   const conNota = cierres.filter(c => c.nota !== null && c.nota !== undefined && c.nota !== '');
-  const materiasConNota = [...new Set(conNota.map(c => c.materia))].sort((a,b) => a.localeCompare(b));
-  materiasConNota.forEach(m => { matSel.innerHTML += `<option value="${m}">${m}</option>`; });
+  const todasMaterias = [...new Set([
+    ...tray.map(t => t.materia),
+    ...conNota.map(c => c.materia)
+  ])].sort((a,b) => a.localeCompare(b));
+  todasMaterias.forEach(m => { matSel.innerHTML += `<option value="${m}">${m}</option>`; });
   renderNotasFiltradas();
 }
 
@@ -2222,28 +2226,63 @@ function renderNotasFiltradas(){
   const mat = document.getElementById('vn-materia').value;
   const el = document.getElementById('vn-content');
   const cierres = _vnData ? (_vnData.cierres || []) : [];
-  const rows = cierres
+  const tray = _vnData ? (_vnData.tray || []) : [];
+
+  // Filas de trayectorias
+  const rowsTray = tray
+    .filter(t => !mat || t.materia === mat)
+    .map(t => ({
+      materia: t.materia,
+      q: t.cuatrimestre,
+      alumno: alumnoNombre(t.alumno_id),
+      tray: t.trayectoria,
+      nota: null
+    }));
+
+  // Filas de cierres con nota
+  const rowsCierre = cierres
     .filter(c => c.nota !== null && c.nota !== undefined && c.nota !== '')
     .filter(c => !mat || c.materia === mat)
     .map(c => ({
       materia: c.materia,
       q: c.cuatrimestre,
       alumno: alumnoNombre(c.alumno_id),
+      tray: null,
       nota: c.nota
-    }))
+    }));
+
+  // Combinar: por materia+cuatrimestre+alumno, preferir cierre si existe
+  const mapa = {};
+  rowsTray.forEach(r => {
+    const k = `${r.materia}__${r.q}__${r.alumno}`;
+    mapa[k] = r;
+  });
+  rowsCierre.forEach(r => {
+    const k = `${r.materia}__${r.q}__${r.alumno}`;
+    if(mapa[k]) { mapa[k].nota = r.nota; }
+    else mapa[k] = r;
+  });
+
+  const rows = Object.values(mapa)
     .sort((a,b) => a.q - b.q || a.materia.localeCompare(b.materia) || a.alumno.localeCompare(b.alumno));
+
   if(!rows.length){
-    el.innerHTML = '<div class="empty">Sin notas cargadas con esos filtros.</div>';
+    el.innerHTML = '<div class="empty">Sin datos cargados con esos filtros.</div>';
     return;
   }
+
+  const colorTray = t => t==='TEL'?'#1a5c3a':t==='TEP'?'#e65100':'#c0392b';
+
   el.innerHTML = `<div class="card"><div class="tabla-wrap"><table>
-    <thead><tr><th>Cuatrim.</th><th>Materia</th><th>Alumno/a</th><th>Nota</th></tr></thead>
+    <thead><tr><th>Cuatrim.</th><th>Materia</th><th>Alumno/a</th><th style="text-align:center">Trayectoria</th><th style="text-align:center">Nota cierre</th></tr></thead>
     <tbody>${rows.map(r=>`<tr>
       <td style="text-align:center">${r.q}°</td>
       <td>${r.materia}</td>
       <td class="td-nombre">${r.alumno}</td>
-      <td>${notaBadge(r.nota)}</td>
-    </tr>`).join('')}</tbody>
+      <td style="text-align:center">${r.tray ? `<span style="font-weight:600;color:${colorTray(r.tray)}">${r.tray}</span>` : '<span style="color:var(--texto2)">—</span>'}</td>
+      <td style="text-align:center">${r.nota !== null && r.nota !== undefined ? notaBadge(r.nota) : '<span style="color:var(--texto2)">—</span>'}</td>
+    </tr>`).join('')}
+    </tbody>
   </table></div></div>`;
 }
 
