@@ -637,8 +637,8 @@ tr:hover td{background:#fafaf8}
   </div>
   <div class="card no-print">
     <div class="field-row">
-      <div class="field"><label>Filtrar por curso</label><select id="vn-curso" onchange="filtrarNotas()"></select></div>
-      <div class="field"><label>Filtrar por materia</label><select id="vn-materia" onchange="filtrarNotas()"></select></div>
+      <div class="field"><label>Filtrar por curso</label><select id="vn-curso" onchange="cargarNotasVerNotas()"></select></div>
+      <div class="field"><label>Filtrar por materia</label><select id="vn-materia" onchange="renderNotasFiltradas()"></select></div>
     </div>
   </div>
   <div id="vn-content"></div>
@@ -2191,44 +2191,41 @@ function irARite(cid,aid){
 // =====================================================================
 // VER NOTAS
 // =====================================================================
-function setupVerNotas(){
-  poblaCursoSel('vn-curso',true);
-  actualizarMateriasVerNotas();
-  filtrarNotas();
+async function setupVerNotas(){
+  poblaCursoSel('vn-curso', true);
+  await cargarNotasVerNotas();
 }
-function actualizarMateriasVerNotas(){
-  const cid = document.getElementById('vn-curso')?.value || '';
-  const cursoObj = CURSOS.find(c => c.id === cid);
-  // Determinar el año del curso (ej: "1°", "2°", "3°")
-  const anioMatch = cursoObj ? cursoObj.nombre.match(/^(\d+)°/) : null;
-  const anio = anioMatch ? anioMatch[1] : '';
-  // Filtrar materiasCache por año si se puede, si no mostrar todas
-  let lista = materiasCache;
-  if(anio) lista = lista.filter(m => String(m.anio) === anio);
-  const matSel = document.getElementById('vn-materia');
-  const nombres = [...new Set(lista.map(m => m.nombre))].sort((a,b) => a.localeCompare(b));
-  matSel.innerHTML = '<option value="">— Todas —</option>';
-  nombres.forEach(m => { matSel.innerHTML += `<option value="${m}">${m}</option>`; });
-}
-async function filtrarNotas(){
-  actualizarMateriasVerNotas();
+
+let _vnData = null; // datos del curso actual en Ver todas las notas
+
+async function cargarNotasVerNotas(){
   const cid = document.getElementById('vn-curso').value;
-  const mat = document.getElementById('vn-materia').value;
   const el = document.getElementById('vn-content');
+  const matSel = document.getElementById('vn-materia');
+  matSel.innerHTML = '<option value="">— Todas —</option>';
   el.innerHTML = '<div class="empty">Cargando notas desde el servidor...</div>';
-  let data;
   try {
-    data = await api('getRiteCurso', {ciclo: cicloActual, cursoId: cid});
+    _vnData = await api('getRiteCurso', {ciclo: cicloActual, cursoId: cid});
   } catch(e) {
     el.innerHTML = '<div class="empty">Error al conectar con el servidor.</div>';
     return;
   }
-  const cierres = data ? (data.cierres || []) : [];
+  // Poblar selector de materias con las que realmente tienen notas en este curso
+  const cierres = _vnData ? (_vnData.cierres || []) : [];
+  const conNota = cierres.filter(c => c.nota !== null && c.nota !== undefined && c.nota !== '');
+  const materiasConNota = [...new Set(conNota.map(c => c.materia))].sort((a,b) => a.localeCompare(b));
+  materiasConNota.forEach(m => { matSel.innerHTML += `<option value="${m}">${m}</option>`; });
+  renderNotasFiltradas();
+}
+
+function renderNotasFiltradas(){
+  const mat = document.getElementById('vn-materia').value;
+  const el = document.getElementById('vn-content');
+  const cierres = _vnData ? (_vnData.cierres || []) : [];
   const rows = cierres
     .filter(c => c.nota !== null && c.nota !== undefined && c.nota !== '')
     .filter(c => !mat || c.materia === mat)
     .map(c => ({
-      curso: cursoNombre(cid),
       materia: c.materia,
       q: c.cuatrimestre,
       alumno: alumnoNombre(c.alumno_id),
@@ -2248,6 +2245,16 @@ async function filtrarNotas(){
       <td>${notaBadge(r.nota)}</td>
     </tr>`).join('')}</tbody>
   </table></div></div>`;
+}
+
+async function filtrarNotas(){
+  const cid = document.getElementById('vn-curso').value;
+  // Si cambia el curso, recargar desde el servidor
+  if(!_vnData || _vnData._cursoId !== cid){
+    await cargarNotasVerNotas();
+  } else {
+    renderNotasFiltradas();
+  }
 }
 
 // =====================================================================
