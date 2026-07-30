@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sistema RITE · CENS Nº 451</title>
+<title>RITE CENS Digital</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -304,7 +304,7 @@ tr:hover td{background:#fafaf8}
       <div class="role-text"><div class="rt">Directivo/a</div><div class="rs">Accedo a informes generales del CENS</div></div>
     </button>
   </div>
-  <div style="text-align:center;font-size:11px;color:var(--texto3);margin-top:8px">Sistema RITE · v3.0</div>
+  <div style="text-align:center;font-size:11px;color:var(--texto3);margin-top:8px">RITE CENS Digital · v3.0</div>
 </div>
 
 <!-- ============ LOGIN ============ -->
@@ -621,7 +621,7 @@ tr:hover td{background:#fafaf8}
 <!-- ============ INFORME POR CURSO — ACCESO PÚBLICO (sin login, para profesores desde Asistencia) ============ -->
 <div class="screen" id="s-informe-publico">
   <div class="nav no-print">
-    <div class="nav-info"><div class="nt">Informe por curso</div><div class="ns">Sistema RITE · CENS Nº 451</div></div>
+    <div class="nav-info"><div class="nt">Informe por curso</div><div class="ns">RITE CENS Digital</div></div>
   </div>
   <div class="card no-print">
     <div class="field"><label>Seleccioná el curso</label><select id="infpub-curso-sel" onchange="mostrarInformePublico()"></select></div>
@@ -1239,15 +1239,22 @@ function setupCierre(){
   document.getElementById('cierre-tbody').innerHTML=alumnos.map(a=>{
     const nota=cierre[a.id]?.nota||'';
     const marcados=cierre[a.id]?.contenidos||{};
+    const obs=cierre[a.id]?.observaciones||{};
     const filaCont=conts.length?`<tr class="cont-row" id="cont-row-${a.id}" style="display:none">
         <td colspan="3">
           <div class="cont-inline-title">Saberes — ${a.nombre}</div>
           ${conts.map((c,i)=>`
-            <div class="cont-item">
-              <span>${c}</span>
-              <div class="cont-checks">
-                <label><input type="radio" name="cont_${a.id}_${i}" value="alcanzado" ${marcados[i]==='alcanzado'?'checked':''}> Alcanzado</label>
-                <label><input type="radio" name="cont_${a.id}_${i}" value="pendiente" ${marcados[i]==='pendiente'?'checked':''}> Pendiente</label>
+            <div class="cont-item" style="flex-direction:column;align-items:flex-start;gap:4px">
+              <div style="display:flex;align-items:center;gap:10px;width:100%">
+                <span style="flex:1">${c}</span>
+                <div class="cont-checks">
+                  <label><input type="radio" name="cont_${a.id}_${i}" value="alcanzado" ${marcados[i]==='alcanzado'?'checked':''} onchange="toggleObs('${a.id}',${i},this.value)"> Alcanzado</label>
+                  <label><input type="radio" name="cont_${a.id}_${i}" value="pendiente" ${marcados[i]==='pendiente'||!marcados[i]?'checked':''} onchange="toggleObs('${a.id}',${i},this.value)"> Pendiente</label>
+                </div>
+              </div>
+              <div id="obs-${a.id}-${i}" style="width:100%;display:${marcados[i]==='alcanzado'?'none':'block'}">
+                <input type="text" class="obs-input" placeholder="¿Qué quedó pendiente? (opcional)" value="${obs[i]||''}"
+                  style="width:100%;font-size:12px;padding:4px 8px;border:1px solid var(--borde);border-radius:6px;background:var(--gris);color:var(--texto);box-sizing:border-box">
               </div>
             </div>`).join('')}
         </td>
@@ -1275,6 +1282,11 @@ function toggleContAlumno(aid){
   if(arrow) arrow.classList.toggle('open',!abierto);
 }
 
+function toggleObs(aid, idx, valor){
+  const obsDiv=document.getElementById(`obs-${aid}-${idx}`);
+  if(obsDiv) obsDiv.style.display=valor==='alcanzado'?'none':'block';
+}
+
 async function guardarCierre(){
   const inputs=document.querySelectorAll('#cierre-tbody .nota-num');
   const conts=datosLocales[keyContenidos(docKey())]||[];
@@ -1282,18 +1294,22 @@ async function guardarCierre(){
   inputs.forEach(inp=>{
     const aid=inp.dataset.id;
     const nota=inp.value?parseInt(inp.value):null;
-    if(!cierre[aid]) cierre[aid]={contenidos:{}};
+    if(!cierre[aid]) cierre[aid]={contenidos:{},observaciones:{}};
     cierre[aid].nota=nota;
+    if(!cierre[aid].observaciones) cierre[aid].observaciones={};
     conts.forEach((_,i)=>{
       const sel=document.querySelector(`input[name="cont_${aid}_${i}"]:checked`);
-      cierre[aid].contenidos[i]=sel?sel.value:'pendiente';
+      const estado=sel?sel.value:'pendiente';
+      cierre[aid].contenidos[i]=estado;
+      const obsEl=document.querySelector(`#obs-${aid}-${i} input`);
+      cierre[aid].observaciones[i]=estado==='pendiente'&&obsEl?obsEl.value.trim():'';
     });
   });
   datosLocales[keyCierre(docKey())]=cierre;
   await guardarDatos();
 
   // Sincronizar cierres con API (incluye detalle de contenidos por alumno)
-  const datos=Object.entries(cierre).map(([alumnoId,d])=>({alumnoId,nota:d.nota,contenidos:d.contenidos||{}}));
+  const datos=Object.entries(cierre).map(([alumnoId,d])=>({alumnoId,nota:d.nota,contenidos:d.contenidos||{},observaciones:d.observaciones||{}}));
   try {
     await api('guardarCierreBloque',{
       ciclo:cicloActual,cursoId:sesion.cursoId,docenteDni:sesion.dni,
@@ -1612,12 +1628,23 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
 
       // Marcado por alumno (guardado junto al cierre). Si todavía no hubo
       // cierre, los contenidos figuran como "pendientes" por defecto.
-      let contData={};
+      let estadosData={};
+      let obsData={};
       if(cierreRow){
-        try{ contData=cierreRow.contenidos_alumno?JSON.parse(cierreRow.contenidos_alumno):{}; }catch(e){ contData={}; }
+        try{
+          const parsed=cierreRow.contenidos_alumno?JSON.parse(cierreRow.contenidos_alumno):{};
+          // Soporte para formato nuevo {estados,observaciones} y formato viejo (objeto plano)
+          if(parsed.estados!==undefined){
+            estadosData=parsed.estados||{};
+            obsData=parsed.observaciones||{};
+          } else {
+            estadosData=parsed; // formato viejo: objeto plano {0:'alcanzado', 1:'pendiente'}
+          }
+        }catch(e){ estadosData={}; }
       }
-      const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
-      const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado');
+      const alcanzados=conts.filter((_,i)=>estadosData[i]==='alcanzado');
+      const pendientes=conts.filter((_,i)=>estadosData[i]!=='alcanzado');
+      const obsArray=conts.map((_,i)=>estadosData[i]!=='alcanzado'?obsData[i]||'':'');
 
       const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
       const recNotas=turnos.map(t=>{
@@ -1626,7 +1653,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
           String(rr.cuatrimestre)===String(cuatri) && rr.turno===t);
         return r&&r.nota!==''?r.nota:null;
       });
-      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
+      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,obsArray,turnos,recNotas});
     });
   } else {
     // ── Fallback: construcción desde localStorage (versión anterior) ──
@@ -1645,14 +1672,16 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       const tray=(datosLocales[`bim_${sin}`]||{})[aid]?.tray||'—';
       const conts=datosLocales[`cont_${sin}`]||[];
       const contData=d.contenidos||{};
+      const obsLocal=d.observaciones||{};
       const alcanzados=conts.filter((_,i)=>contData[i]==='alcanzado');
       const pendientes=conts.filter((_,i)=>contData[i]!=='alcanzado'&&conts[i]);
+      const obsArray=conts.map((_,i)=>contData[i]!=='alcanzado'?obsLocal[i]||'':'');
       const turnos=cuatri===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
       const recNotas=turnos.map(t=>{
         const rk=`rec_${sin}_${t}`;
         return (datosLocales[rk]||{})[aid]?.nota;
       });
-      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,turnos,recNotas});
+      materiasAlumno.push({materia,cuatri,nota,tray,alcanzados,pendientes,obsArray,turnos,recNotas});
     });
   }
 
@@ -1716,19 +1745,24 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
     return mats.filter(m=>m.alcanzados.length||m.pendientes.length).map(m=>{
       const cerrada=m.nota!==null&&m.nota!==undefined&&m.nota!=='';
       if(!cerrada){
-        // Todavía no hay cierre/nota para esta materia: no corresponde juzgar
-        // qué alcanzó o no el alumno. Mostramos los temas como "enseñados".
         const todos=[...m.alcanzados,...m.pendientes];
         return `<div class="rite-cont-box">
           <b>${m.materia}</b><br>
           <span style="color:var(--texto2)">📖 Saberes enseñados: </span>${todos.join(' · ')}
         </div>`;
       }
+      const obs=m.obsArray||[];
+      const pendConObs=m.pendientes.map((p,j)=>{
+        // Buscamos el índice original de este pendiente en obsArray
+        const idxOrig=([...m.alcanzados,...m.pendientes]).indexOf(p);
+        const o=obs[m.alcanzados.length+j]||'';
+        return o?`${p} <em style="color:var(--texto3)">(${o})</em>`:p;
+      });
       return `<div class="rite-cont-box">
         <b>${m.materia}</b><br>
         ${m.alcanzados.length?`<span style="color:var(--verde)">✓ Alcanzados: </span>${m.alcanzados.join(' · ')}`:''}
         ${m.alcanzados.length&&m.pendientes.length?'<br>':''}
-        ${m.pendientes.length?`<span style="color:var(--rojo)">⚠ Pendientes: </span>${m.pendientes.join(' · ')}`:''}
+        ${pendConObs.length?`<span style="color:var(--rojo)">⚠ Pendientes: </span>${pendConObs.join(' · ')}`:''}
       </div>`;
     }).join('');
   }
@@ -1764,7 +1798,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       ${estadoMod(mod2)}
       ${mat2.length?`<div class="rite-section" style="font-size:10px">Saberes — 2° Cuatrimestre</div>${contBoxPreview(mat2)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
       <div style="margin-top:12px;font-size:10px;color:var(--texto3);border-top:1px solid var(--borde);padding-top:8px">
-        Generado: ${hoy()} · CENS Nº 451 · La Matanza · Sistema RITE ${cicloActual}
+        Generado: ${hoy()} · CENS Nº 451 · La Matanza · RITE CENS Digital
       </div>
     </div>`;
 
@@ -1827,18 +1861,21 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
     return rows.map(m=>{
       const cerrada=m.nota!==null&&m.nota!==undefined&&m.nota!=='';
       if(!cerrada){
-        // Todavía no hay cierre/nota: no corresponde indicar qué alcanzó o no
-        // el alumno. Mostramos los temas simplemente como "enseñados".
         const todos=[...m.alcanzados,...m.pendientes];
         return `<div class="p-cont-row">
           <span style="font-weight:700">${m.materia}</span>
           <span style="color:#555;grid-column:span 2">📖 Saberes enseñados: ${todos.join(' · ')||'—'}</span>
         </div>`;
       }
+      const obs=m.obsArray||[];
+      const pendConObs=m.pendientes.map((p,j)=>{
+        const o=obs[m.alcanzados.length+j]||'';
+        return o?`${p} (${o})`:p;
+      });
       return `<div class="p-cont-row">
         <span style="font-weight:700">${m.materia}</span>
         <span style="color:#1a5c3a">${m.alcanzados.join(' · ')||'—'}</span>
-        <span style="color:#c62828">${m.pendientes.join(' · ')||'—'}</span>
+        <span style="color:#c62828">${pendConObs.join(' · ')||'—'}</span>
       </div>`;
     }).join('');
   }
@@ -1896,7 +1933,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
         <div class="firma-item"><div class="firma-linea"></div><div>Firma del/la Estudiante</div><div style="font-size:8px;color:#555">Aclaración</div></div>
       </div>
       <div style="text-align:right;font-size:8px;color:#888;margin-top:10px;border-top:1px solid #eee;padding-top:5px">
-        CENS Nº 451 · La Matanza · Generado: ${hoy()} · Sistema RITE ${cicloActual}
+        CENS Nº 451 · La Matanza · Generado: ${hoy()} · RITE CENS Digital
       </div>
     </div>`;
 }
