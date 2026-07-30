@@ -1111,7 +1111,7 @@ async function doLogin(){
 async function cargarRiteAlumno(){
   const dni=sesion.dni;
   document.getElementById('alu-header-user').textContent=`DNI: ${dni}`;
-  document.getElementById('alu-header-ciclo').textContent=cicloActual;
+  document.getElementById('alu-header-ciclo').textContent='Historial completo';
   document.getElementById('alu-acciones').style.display='none';
   document.getElementById('alu-rite-content').innerHTML='<div class="loading"><div class="spinner"></div>Buscando tu RITE…</div>';
 
@@ -1122,7 +1122,7 @@ async function cargarRiteAlumno(){
       <div class="alumno-rite-card">
         <div style="font-size:40px;margin-bottom:10px">📋</div>
         <div class="arc-nombre">DNI ${dni}</div>
-        <div class="arc-ciclo">${cicloActual}</div>
+        <div class="arc-ciclo">Sin registro</div>
       </div>
       <div class="warn-box">
         ℹ Tu RITE aún no está disponible en el sistema o tu DNI no fue registrado.<br><br>
@@ -1131,23 +1131,60 @@ async function cargarRiteAlumno(){
     return;
   }
 
-  const curso=CURSOS.find(c=>c.id===alumno.curso);
   document.getElementById('alu-header-user').textContent=alumno.nombre;
   document.getElementById('alu-acciones').style.display='';
-  await renderRiteAlumnoView(alumno,curso);
+  await renderRiteAlumnoView(alumno);
 }
 
-async function renderRiteAlumnoView(alumno,curso){
-  // Construir vista del RITE con datos reales del sheet (con fallback a datosLocales)
+async function renderRiteAlumnoView(alumno){
   const el=document.getElementById('alu-rite-content');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Cargando historial…</div>';
+
+  // Traemos TODOS los ciclos del alumno de una sola llamada
+  let historial=null;
+  try {
+    historial=await api('getRiteAlumnoCompleto',{alumnoId:alumno.id});
+  } catch(e){
+    console.warn('No se pudo cargar el historial completo, usando ciclo actual:', e);
+  }
+
+  // Si no hay historial en el sheet, caemos al ciclo actual como antes
+  const ciclos=historial?.ciclos?.length ? historial.ciclos : [cicloActual];
+  const ciclosCursos=historial?.ciclosCursos||[{ciclo:cicloActual,cursoId:alumno.curso}];
+
+  // Encabezado del alumno
   el.innerHTML=`
     <div class="alumno-rite-card">
       <div class="arc-nombre">${alumno.nombre}</div>
-      <div class="arc-curso">Curso: ${curso?curso.nombre:'—'} · Preceptor/a: ${curso?curso.preceptor:'—'}</div>
-      <div class="arc-ciclo">Ciclo Lectivo ${cicloActual}</div>
+      <div class="arc-ciclo">Trayectoria educativa ${ciclos[0]}${ciclos.length>1?' → '+ciclos[ciclos.length-1]:''}</div>
     </div>
   `;
-  await generarRiteParaAlumno(alumno.curso,alumno.id,'alu-rite-content',true);
+
+  // Generamos el RITE de cada ciclo, de más antiguo a más reciente
+  for(const ciclo of ciclos){
+    // Buscamos el curso que tenía en ese ciclo
+    const cc=ciclosCursos.find(x=>String(x.ciclo)===String(ciclo));
+    const cursoId=cc?cc.cursoId:alumno.curso;
+    const curso=CURSOS.find(c=>c.id===cursoId);
+
+    // Separador de año
+    el.innerHTML+=`<div style="margin:18px 0 8px;padding:8px 12px;background:var(--verde);color:white;border-radius:8px;font-weight:700;font-size:14px">
+      📅 Ciclo Lectivo ${ciclo} ${curso?'· '+curso.nombre:''}
+    </div>`;
+
+    // Generamos el RITE de ese ciclo, pasando el sheetData ya cargado si lo tenemos
+    const sheetDataCiclo=historial?{
+      tray:       (historial.tray||[]).filter(r=>String(r.ciclo)===String(ciclo)),
+      cierres:    (historial.cierres||[]).filter(r=>String(r.ciclo)===String(ciclo)),
+      recups:     (historial.recups||[]).filter(r=>String(r.ciclo)===String(ciclo)),
+      proyectos:  (historial.proyectos||[]).filter(r=>String(r.ciclo)===String(ciclo)),
+      contenidos: (historial.contenidos||[]).filter(r=>String(r.ciclo)===String(ciclo)),
+    }:null;
+
+    await generarRiteParaAlumno(cursoId, alumno.id, 'alu-rite-content', true, ciclo, sheetDataCiclo);
+  }
+
+  document.getElementById('alu-acciones').style.display='';
 }
 
 // =====================================================================
@@ -1181,17 +1218,42 @@ function setupMenuDoc(){
 // =====================================================================
 // BIMESTRE
 // =====================================================================
-function setupBimestre(){
+async function setupBimestre(){
   const q=sesion.cuatrimestre;
   document.getElementById('bim-title').textContent=`${q}° Bimestre`;
   document.getElementById('bim-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  document.getElementById('bim-tbody').innerHTML='<tr><td colspan="2"><div class="loading"><div class="spinner"></div>Cargando…</div></td></tr>';
+
+  // Traemos trayectorias reales del Sheet para este curso/materia/cuatrimestre
+  let traySheet={};
+  try {
+    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+    (sheetData.tray||[]).forEach(t=>{
+      if(t.materia===sesion.materia&&String(t.cuatrimestre)===String(sesion.cuatrimestre)){
+        traySheet[t.alumno_id]=t.trayectoria;
+      }
+    });
+    // Actualizamos datosLocales con lo que vino del Sheet
+    const bimKey=keyBimestre(docKey());
+    if(!datosLocales[bimKey]) datosLocales[bimKey]={};
+    Object.entries(traySheet).forEach(([aid,tray])=>{
+      if(!datosLocales[bimKey][aid]) datosLocales[bimKey][aid]={};
+      datosLocales[bimKey][aid].tray=tray;
+    });
+    await guardarDatosLocales();
+  } catch(e){
+    console.warn('No se pudo traer trayectorias del sheet:', e);
+  }
+
   const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const bim=datosLocales[keyBimestre(docKey())]||{};
   document.getElementById('bim-tbody').innerHTML=alumnos.map(a=>{
-    const val=bim[a.id]?.tray||'TEL';
+    // Si no hay dato cargado en el sheet NI en localStorage, no preseleccionamos nada
+    const val=bim[a.id]?.tray||'';
     return `<tr>
       <td class="td-nombre">${a.nombre}</td>
       <td><select class="nota-sel" data-id="${a.id}">
+        <option value="" ${!val?'selected':''} style="color:var(--texto3)">— Sin cargar —</option>
         <option value="TEL" ${val==='TEL'?'selected':''}>TEL — Lograda</option>
         <option value="TEP" ${val==='TEP'?'selected':''}>TEP — En Proceso</option>
         <option value="TED" ${val==='TED'?'selected':''}>TED — Discontinua</option>
@@ -1225,10 +1287,49 @@ async function guardarBimestre(){
 // =====================================================================
 // CIERRE
 // =====================================================================
-function setupCierre(){
+async function setupCierre(){
   const q=sesion.cuatrimestre;
   document.getElementById('cierre-title').textContent=`Cierre del ${q}° cuatrimestre`;
   document.getElementById('cierre-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  document.getElementById('cierre-tbody').innerHTML='<tr><td colspan="3"><div class="loading"><div class="spinner"></div>Cargando…</div></td></tr>';
+
+  // Traemos cierres y contenidos reales del Sheet
+  try {
+    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+
+    // Actualizamos datosLocales con cierres reales del Sheet para esta materia/cuatrimestre
+    const cierreKey=keyCierre(docKey());
+    if(!datosLocales[cierreKey]) datosLocales[cierreKey]={};
+    (sheetData.cierres||[]).filter(c=>
+      c.materia===sesion.materia&&String(c.cuatrimestre)===String(sesion.cuatrimestre)
+    ).forEach(c=>{
+      let estadosData={}, obsData={};
+      try {
+        const parsed=c.contenidos_alumno?JSON.parse(c.contenidos_alumno):{};
+        if(parsed.estados!==undefined){ estadosData=parsed.estados||{}; obsData=parsed.observaciones||{}; }
+        else { estadosData=parsed; }
+      } catch(e){}
+      datosLocales[cierreKey][c.alumno_id]={
+        nota: c.nota!==''&&c.nota!==null&&c.nota!==undefined?c.nota:null,
+        contenidos: estadosData,
+        observaciones: obsData
+      };
+    });
+
+    // Actualizamos contenidos del Sheet
+    const contKey=keyContenidos(docKey());
+    const contRow=(sheetData.contenidos||[]).find(co=>
+      co.materia===sesion.materia&&String(co.cuatrimestre)===String(sesion.cuatrimestre)
+    );
+    if(contRow){
+      try{ datosLocales[contKey]=JSON.parse(contRow.contenidos_json||'[]'); }catch(e){}
+    }
+
+    await guardarDatosLocales();
+  } catch(e){
+    console.warn('No se pudo traer datos del sheet para cierre:', e);
+  }
+
   const bim=datosLocales[keyBimestre(docKey())]||{};
   const bimCargado=Object.keys(bim).length>0;
   document.getElementById('cierre-sin-bim').style.display=bimCargado?'none':'';
@@ -1571,7 +1672,7 @@ async function generarRite(autoPrint=false){
 // =====================================================================
 // CORE RITE GENERATOR (compartido por preceptor y alumno)
 // =====================================================================
-async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
+async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, cicloOverride=null, sheetDataOverride=null){
   const curso=CURSOS.find(c=>c.id===cid);
   const alumno=ALUMNOS_RAW.find(a=>a.id===aid);
   if(!alumno||!curso){ toast('Alumno no encontrado','err'); return; }
@@ -1581,13 +1682,17 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const loadingHTML='<div class="loading"><div class="spinner"></div>Generando RITE…</div>';
   if(append) contenedor.innerHTML+=loadingHTML; else contenedor.innerHTML=loadingHTML;
 
-  // Intentamos traer los datos reales desde el Sheet (funciona en cualquier dispositivo/navegador).
-  // Si falla la conexión, caemos a datosLocales (caché del navegador actual) como respaldo.
-  let sheetData=null;
-  try {
-    sheetData=await api('getRiteAlumno',{ciclo:cicloActual,alumnoId:aid,cursoId:cid});
-  } catch(e){
-    console.warn('No se pudo traer el RITE desde el sheet, usando datos locales:', e);
+  const cicloParaUsar=cicloOverride||cicloActual;
+
+  // Si ya nos pasaron el sheetData pre-filtrado (caso historial), lo usamos directamente.
+  // Si no, lo traemos del sheet (caso normal de un solo ciclo).
+  let sheetData=sheetDataOverride||null;
+  if(!sheetData){
+    try {
+      sheetData=await api('getRiteAlumno',{ciclo:cicloParaUsar,alumnoId:aid,cursoId:cid});
+    } catch(e){
+      console.warn('No se pudo traer el RITE desde el sheet, usando datos locales:', e);
+    }
   }
 
   const materiasAlumno=[];
@@ -1782,12 +1887,12 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
   const previewHTML=`
     <div class="rite-doc">
       <div class="rite-header-doc">
-        <div class="rite-titulo">RITE ${cicloActual} · Registro Individual de Trayectoria Educativa</div>
+        <div class="rite-titulo">RITE ${cicloParaUsar} · Registro Individual de Trayectoria Educativa</div>
         <div class="rite-sub">CENS Nº 451 · La Matanza</div>
       </div>
       <div class="rite-alumno-box">
         <p>${alumno.nombre}</p>
-        <span>Curso: ${curso.nombre} &nbsp;·&nbsp; Preceptor/a: ${curso.preceptor} &nbsp;·&nbsp; Año: ${cicloActual}</span>
+        <span>Curso: ${curso.nombre} &nbsp;·&nbsp; Preceptor/a: ${curso.preceptor} &nbsp;·&nbsp; Año: ${cicloParaUsar}</span>
       </div>
       <div class="rite-section">Módulo 1 — 1° Cuatrimestre</div>
       ${tablaModuloPreview(mat1,1,proy1)}
@@ -1885,7 +1990,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       <div class="p-header-top">
         <div></div>
       </div>
-      <div class="p-titulo">RITE ${cicloActual}</div>
+      <div class="p-titulo">RITE ${cicloParaUsar}</div>
       <div class="p-subtitulo">Registro Individual de Trayectoria Educativa</div>
       <div class="p-info-bloque">
         <div class="p-info-celda"><b>Escuela</b>CENS Nº 451</div>
@@ -1894,7 +1999,7 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false){
       </div>
       <div class="p-alumno-bloque">
         <div><span style="font-size:9px">Estudiante</span><br><strong style="font-size:12px;text-transform:uppercase">${alumno.nombre}</strong></div>
-        <div style="margin-left:24px"><span style="font-size:9px">Ciclo lectivo: ${cicloActual}</span><br><span style="font-size:9px">Preceptor/a: ${curso.preceptor}</span></div>
+        <div style="margin-left:24px"><span style="font-size:9px">Ciclo lectivo: ${cicloParaUsar}</span><br><span style="font-size:9px">Preceptor/a: ${curso.preceptor}</span></div>
       </div>
       <div class="p-leyenda">
         <span style="font-weight:700">Trayectorias:</span>
