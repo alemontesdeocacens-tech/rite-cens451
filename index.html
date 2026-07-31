@@ -902,6 +902,76 @@ async function guardarDatosLocales(){
 }
 
 // =====================================================================
+// SINCRONIZACIÓN DESDE EL SHEET — fuente de verdad para el docente
+// Carga todos los datos del docente (trayectorias, cierres, contenidos,
+// recuperaciones) desde el Sheet y actualiza datosLocales de una vez.
+// Llamar al entrar a cualquier pantalla del menú docente.
+// =====================================================================
+async function sincronizarDocente(){
+  try {
+    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+    const mat=sesion.materia;
+    const q=String(sesion.cuatrimestre);
+
+    // ── Trayectorias del bimestre ──
+    const bimKey=keyBimestre(docKey());
+    if(!datosLocales[bimKey]) datosLocales[bimKey]={};
+    (sheetData.tray||[])
+      .filter(t=>t.materia===mat&&String(t.cuatrimestre)===q)
+      .forEach(t=>{
+        if(!datosLocales[bimKey][t.alumno_id]) datosLocales[bimKey][t.alumno_id]={};
+        datosLocales[bimKey][t.alumno_id].tray=t.trayectoria;
+      });
+
+    // ── Cierres (notas + contenidos por alumno) ──
+    const cierreKey=keyCierre(docKey());
+    if(!datosLocales[cierreKey]) datosLocales[cierreKey]={};
+    (sheetData.cierres||[])
+      .filter(c=>c.materia===mat&&String(c.cuatrimestre)===q)
+      .forEach(c=>{
+        let estados={}, obs={};
+        try{
+          const parsed=c.contenidos_alumno?JSON.parse(c.contenidos_alumno):{};
+          if(parsed.estados!==undefined){ estados=parsed.estados||{}; obs=parsed.observaciones||{}; }
+          else { estados=parsed; }
+        }catch(e){}
+        datosLocales[cierreKey][c.alumno_id]={
+          nota:c.nota!==''&&c.nota!==null&&c.nota!==undefined?c.nota:null,
+          contenidos:estados,
+          observaciones:obs
+        };
+      });
+
+    // ── Contenidos enseñados ──
+    const contKey=keyContenidos(docKey());
+    const contRow=(sheetData.contenidos||[])
+      .find(co=>co.materia===mat&&String(co.cuatrimestre)===q);
+    if(contRow){
+      try{
+        const lista=JSON.parse(contRow.contenidos_json||'[]');
+        if(lista.length) datosLocales[contKey]=lista;
+      }catch(e){}
+    }
+
+    // ── Recuperaciones ──
+    const turnos=q==='1'?['agosto','diciembre','febrero']:['diciembre','febrero'];
+    turnos.forEach(turno=>{
+      const recKey=keyRecup(docKey(),turno);
+      if(!datosLocales[recKey]) datosLocales[recKey]={};
+      (sheetData.recups||[])
+        .filter(r=>r.materia===mat&&String(r.cuatrimestre)===q&&r.turno===turno)
+        .forEach(r=>{
+          datosLocales[recKey][r.alumno_id]={nota:r.nota!==''?r.nota:null};
+        });
+    });
+
+    await guardarDatosLocales();
+  } catch(e){
+    console.warn('No se pudo sincronizar datos del docente desde el sheet:', e);
+  }
+}
+
+// =====================================================================
 // GUARDAR EN SHEET (envuelve localStorage + API)
 // =====================================================================
 async function guardarDatos(){
@@ -1199,25 +1269,7 @@ async function setupMenuDoc(){
   document.getElementById('btn-cierre-title').textContent=`Cierre del ${sesion.cuatrimestre}° Cuatrimestre`;
   const alumnos=alumnosDeCurso(sesion.cursoId);
 
-  // Traemos trayectorias reales del Sheet para mostrar los contadores correctos
-  try {
-    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
-    const traySheet={};
-    (sheetData.tray||[]).filter(t=>
-      t.materia===sesion.materia&&String(t.cuatrimestre)===String(sesion.cuatrimestre)
-    ).forEach(t=>{ traySheet[t.alumno_id]=t.trayectoria; });
-
-    // Actualizamos datosLocales con los datos reales del Sheet
-    const bimKey=keyBimestre(docKey());
-    if(!datosLocales[bimKey]) datosLocales[bimKey]={};
-    Object.entries(traySheet).forEach(([aid,tray])=>{
-      if(!datosLocales[bimKey][aid]) datosLocales[bimKey][aid]={};
-      datosLocales[bimKey][aid].tray=tray;
-    });
-    await guardarDatosLocales();
-  } catch(e){
-    console.warn('No se pudo traer trayectorias del sheet para el menú:', e);
-  }
+  await sincronizarDocente();
 
   const bim=datosLocales[keyBimestre(docKey())]||{};
   let tel=0,tep=0,ted=0;
@@ -1244,31 +1296,11 @@ async function setupBimestre(){
   document.getElementById('bim-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
   document.getElementById('bim-tbody').innerHTML='<tr><td colspan="2"><div class="loading"><div class="spinner"></div>Cargando…</div></td></tr>';
 
-  // Traemos trayectorias reales del Sheet para este curso/materia/cuatrimestre
-  let traySheet={};
-  try {
-    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
-    (sheetData.tray||[]).forEach(t=>{
-      if(t.materia===sesion.materia&&String(t.cuatrimestre)===String(sesion.cuatrimestre)){
-        traySheet[t.alumno_id]=t.trayectoria;
-      }
-    });
-    // Actualizamos datosLocales con lo que vino del Sheet
-    const bimKey=keyBimestre(docKey());
-    if(!datosLocales[bimKey]) datosLocales[bimKey]={};
-    Object.entries(traySheet).forEach(([aid,tray])=>{
-      if(!datosLocales[bimKey][aid]) datosLocales[bimKey][aid]={};
-      datosLocales[bimKey][aid].tray=tray;
-    });
-    await guardarDatosLocales();
-  } catch(e){
-    console.warn('No se pudo traer trayectorias del sheet:', e);
-  }
+  await sincronizarDocente();
 
   const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const bim=datosLocales[keyBimestre(docKey())]||{};
   document.getElementById('bim-tbody').innerHTML=alumnos.map(a=>{
-    // Si no hay dato cargado en el sheet NI en localStorage, no preseleccionamos nada
     const val=bim[a.id]?.tray||'';
     return `<tr>
       <td class="td-nombre">${a.nombre}</td>
@@ -1313,42 +1345,7 @@ async function setupCierre(){
   document.getElementById('cierre-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
   document.getElementById('cierre-tbody').innerHTML='<tr><td colspan="3"><div class="loading"><div class="spinner"></div>Cargando…</div></td></tr>';
 
-  // Traemos cierres y contenidos reales del Sheet
-  try {
-    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
-
-    // Actualizamos datosLocales con cierres reales del Sheet para esta materia/cuatrimestre
-    const cierreKey=keyCierre(docKey());
-    if(!datosLocales[cierreKey]) datosLocales[cierreKey]={};
-    (sheetData.cierres||[]).filter(c=>
-      c.materia===sesion.materia&&String(c.cuatrimestre)===String(sesion.cuatrimestre)
-    ).forEach(c=>{
-      let estadosData={}, obsData={};
-      try {
-        const parsed=c.contenidos_alumno?JSON.parse(c.contenidos_alumno):{};
-        if(parsed.estados!==undefined){ estadosData=parsed.estados||{}; obsData=parsed.observaciones||{}; }
-        else { estadosData=parsed; }
-      } catch(e){}
-      datosLocales[cierreKey][c.alumno_id]={
-        nota: c.nota!==''&&c.nota!==null&&c.nota!==undefined?c.nota:null,
-        contenidos: estadosData,
-        observaciones: obsData
-      };
-    });
-
-    // Actualizamos contenidos del Sheet
-    const contKey=keyContenidos(docKey());
-    const contRow=(sheetData.contenidos||[]).find(co=>
-      co.materia===sesion.materia&&String(co.cuatrimestre)===String(sesion.cuatrimestre)
-    );
-    if(contRow){
-      try{ datosLocales[contKey]=JSON.parse(contRow.contenidos_json||'[]'); }catch(e){}
-    }
-
-    await guardarDatosLocales();
-  } catch(e){
-    console.warn('No se pudo traer datos del sheet para cierre:', e);
-  }
+  await sincronizarDocente();
 
   const bim=datosLocales[keyBimestre(docKey())]||{};
   const bimCargado=Object.keys(bim).length>0;
@@ -1451,9 +1448,10 @@ async function guardarCierre(){
 // =====================================================================
 // CONTENIDOS
 // =====================================================================
-function setupContenidos(){
+async function setupContenidos(){
   document.getElementById('cont-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
   document.getElementById('cont-q-label').textContent=`Contenidos del ${sesion.cuatrimestre}° cuatrimestre`;
+  await sincronizarDocente();
   renderChips();
 }
 function renderChips(){
@@ -1493,9 +1491,12 @@ async function guardarContenidos(){
 // =====================================================================
 // RECUPERACIONES
 // =====================================================================
-function setupRecuperaciones(){
+async function setupRecuperaciones(){
   document.getElementById('rec-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
   const q=sesion.cuatrimestre;
+
+  await sincronizarDocente();
+
   const cierre=datosLocales[keyCierre(docKey())]||{};
   const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const desaprobados=alumnos.filter(a=>{
