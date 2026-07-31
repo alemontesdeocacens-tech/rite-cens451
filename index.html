@@ -1190,7 +1190,7 @@ async function renderRiteAlumnoView(alumno){
 // =====================================================================
 // MENÚ DOCENTE
 // =====================================================================
-function setupMenuDoc(){
+async function setupMenuDoc(){
   const c=CURSOS.find(c=>c.id===sesion.cursoId)||{nombre:''};
   document.getElementById('doc-header-title').textContent=`${sesion.materia} · ${c.nombre}`;
   document.getElementById('doc-header-user').textContent=sesion.nombre;
@@ -1198,14 +1198,34 @@ function setupMenuDoc(){
   document.getElementById('btn-bim-title').textContent=`${sesion.cuatrimestre}° Bimestre`;
   document.getElementById('btn-cierre-title').textContent=`Cierre del ${sesion.cuatrimestre}° Cuatrimestre`;
   const alumnos=alumnosDeCurso(sesion.cursoId);
+
+  // Traemos trayectorias reales del Sheet para mostrar los contadores correctos
+  try {
+    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+    const traySheet={};
+    (sheetData.tray||[]).filter(t=>
+      t.materia===sesion.materia&&String(t.cuatrimestre)===String(sesion.cuatrimestre)
+    ).forEach(t=>{ traySheet[t.alumno_id]=t.trayectoria; });
+
+    // Actualizamos datosLocales con los datos reales del Sheet
+    const bimKey=keyBimestre(docKey());
+    if(!datosLocales[bimKey]) datosLocales[bimKey]={};
+    Object.entries(traySheet).forEach(([aid,tray])=>{
+      if(!datosLocales[bimKey][aid]) datosLocales[bimKey][aid]={};
+      datosLocales[bimKey][aid].tray=tray;
+    });
+    await guardarDatosLocales();
+  } catch(e){
+    console.warn('No se pudo traer trayectorias del sheet para el menú:', e);
+  }
+
   const bim=datosLocales[keyBimestre(docKey())]||{};
-  let tel=0,tep=0,ted=0,sin=0;
+  let tel=0,tep=0,ted=0;
   alumnos.forEach(a=>{
     const t=bim[a.id]?.tray;
     if(t==='TEL') tel++;
     else if(t==='TEP') tep++;
     else if(t==='TED') ted++;
-    else sin++;
   });
   document.getElementById('doc-stats').innerHTML=`
     <div class="stat"><div class="sn">${alumnos.length}</div><div class="sl">Alumnos</div></div>
