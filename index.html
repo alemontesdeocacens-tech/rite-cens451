@@ -919,8 +919,9 @@ async function sincronizarDocente(){
     (sheetData.tray||[])
       .filter(t=>t.materia===mat&&String(t.cuatrimestre)===q)
       .forEach(t=>{
-        if(!datosLocales[bimKey][t.alumno_id]) datosLocales[bimKey][t.alumno_id]={};
-        datosLocales[bimKey][t.alumno_id].tray=t.trayectoria;
+        const aid=String(t.alumno_id).trim();
+        if(!datosLocales[bimKey][aid]) datosLocales[bimKey][aid]={};
+        datosLocales[bimKey][aid].tray=t.trayectoria;
       });
 
     // ── Cierres (notas + contenidos por alumno) ──
@@ -935,7 +936,8 @@ async function sincronizarDocente(){
           if(parsed.estados!==undefined){ estados=parsed.estados||{}; obs=parsed.observaciones||{}; }
           else { estados=parsed; }
         }catch(e){}
-        datosLocales[cierreKey][c.alumno_id]={
+        const aid=String(c.alumno_id).trim();
+        datosLocales[cierreKey][aid]={
           nota:c.nota!==''&&c.nota!==null&&c.nota!==undefined?c.nota:null,
           contenidos:estados,
           observaciones:obs
@@ -961,7 +963,8 @@ async function sincronizarDocente(){
       (sheetData.recups||[])
         .filter(r=>r.materia===mat&&String(r.cuatrimestre)===q&&r.turno===turno)
         .forEach(r=>{
-          datosLocales[recKey][r.alumno_id]={nota:r.nota!==''?r.nota:null};
+          const aid=String(r.alumno_id).trim();
+          datosLocales[recKey][aid]={nota:r.nota!==''?r.nota:null};
         });
     });
 
@@ -2130,14 +2133,22 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
   // ── Resumen por alumno (módulos 1 y 2) ──────────────────────────────
   const resumen=alumnos.map(a=>{
     let apr1=0,pen1=0,apr2=0,pen2=0,mat1=0,mat2=0;
+    let notas1=[],notas2=[]; // notas numéricas por materia
     if(data){
       (data.cierres||[]).forEach(c=>{
-        if(c.alumno_id!==a.id) return;
+        if(String(c.alumno_id).trim()!==String(a.id).trim()) return;
         if(c.nota===''||c.nota===undefined||c.nota===null) return;
         const ok=parseInt(c.nota)>=7;
-        if(String(c.cuatrimestre)==='1'){mat1++;if(ok)apr1++;else pen1++;}
-        else{mat2++;if(ok)apr2++;else pen2++;}
+        if(String(c.cuatrimestre)==='1'){
+          mat1++;if(ok)apr1++;else pen1++;
+          notas1.push({materia:c.materia,nota:c.nota,ok});
+        } else {
+          mat2++;if(ok)apr2++;else pen2++;
+          notas2.push({materia:c.materia,nota:c.nota,ok});
+        }
       });
+      notas1.sort((x,y)=>x.materia.localeCompare(y.materia));
+      notas2.sort((x,y)=>x.materia.localeCompare(y.materia));
     } else {
       Object.keys(datosLocales).forEach(k=>{
         if(!k.startsWith('cierre_')) return;
@@ -2145,11 +2156,12 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
         const partes=sin.split('_');
         if(partes[0]!==cid) return;
         const q=parseInt(partes[partes.length-1].replace('Q',''));
+        const materia=partes.slice(1,-1).join(' ');
         const d=datosLocales[k][a.id];
         if(!d||d.nota===null||d.nota===undefined) return;
         const ok=parseInt(d.nota)>=7;
-        if(q===1){mat1++;if(ok)apr1++;else pen1++;}
-        else{mat2++;if(ok)apr2++;else pen2++;}
+        if(q===1){mat1++;if(ok)apr1++;else pen1++;notas1.push({materia,nota:d.nota,ok});}
+        else{mat2++;if(ok)apr2++;else pen2++;notas2.push({materia,nota:d.nota,ok});}
       });
     }
     const pn1=data
@@ -2163,13 +2175,13 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
     let tray1=[],tray2=[];
     if(data){
       const trayAlumno=(data.tray||[])
-        .filter(t=>t.alumno_id===a.id)
+        .filter(t=>String(t.alumno_id).trim()===String(a.id).trim())
         .map(t=>({materia:t.materia,cuatri:parseInt(t.cuatrimestre),tray:t.trayectoria}))
         .sort((x,y)=>x.materia.localeCompare(y.materia));
       tray1=trayAlumno.filter(t=>t.cuatri===1);
       tray2=trayAlumno.filter(t=>t.cuatri===2);
     }
-    return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2,tray1,tray2};
+    return {a,apr1,pen1,apr2,pen2,mat1,mat2,pn1,pn2,tray1,tray2,notas1,notas2};
   });
 
   // ── Trayectorias del bimestre vigente, agrupadas por materia ───────
@@ -2181,7 +2193,7 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
     trayData.forEach(t=>{
       const k=`${t.materia}__Q${t.cuatrimestre}`;
       if(!porMateria[k]) porMateria[k]={materia:t.materia,cuatri:t.cuatrimestre,filas:[]};
-      const al=ALUMNOS_RAW.find(a=>a.id===t.alumno_id);
+      const al=ALUMNOS_RAW.find(a=>String(a.id).trim()===String(t.alumno_id).trim());
       porMateria[k].filas.push({nombre:al?al.nombre:t.alumno_id,tray:t.trayectoria});
     });
     const grupos=Object.values(porMateria).sort((x,y)=>x.cuatri-y.cuatri||x.materia.localeCompare(y.materia));
@@ -2250,10 +2262,10 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
     if (data) {
       promedios = alumnos.map(a => {
         const cierresAlumno = (data.cierres || []).filter(c =>
-          c.alumno_id === a.id && c.nota !== '' && c.nota !== undefined && c.nota !== null
+          String(c.alumno_id).trim()===String(a.id).trim() && c.nota !== '' && c.nota !== undefined && c.nota !== null
         );
         const recupsAlumno = (data.recups || []).filter(r =>
-          r.alumno_id === a.id && r.nota !== '' && r.nota !== undefined && r.nota !== null
+          String(r.alumno_id).trim()===String(a.id).trim() && r.nota !== '' && r.nota !== undefined && r.nota !== null
         );
         if (!cierresAlumno.length) return null;
         let sumaNotas = 0, totalMaterias = 0, todasAprobadas = true;
@@ -2315,13 +2327,19 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
               `<span style="font-size:11px;white-space:nowrap"><b>${abrevMateria(t.materia)}:</b> <span style="color:${t.tray==='TEL'?'#1a5c3a':t.tray==='TEP'?'#e65100':'#c0392b'};font-weight:600">${t.tray}</span></span>`
             ).join('')}</div>`;
           };
+          const celdaNotas=(lista)=>{
+            if(!lista.length) return '<span class="badge badge-sin">—</span>';
+            return `<div style="display:flex;flex-direction:column;gap:3px">${lista.map(n=>
+              `<span style="font-size:11px;white-space:nowrap"><b>${abrevMateria(n.materia)}:</b> <span style="color:${n.ok?'#1a5c3a':'#c0392b'};font-weight:700">${n.nota}</span></span>`
+            ).join('')}</div>`;
+          };
           return `<tr>
           <td class="td-nombre">${r.a.nombre}</td>
           <td>${celdaTray(r.tray1)}</td>
-          <td>${r.mat1===0?'<span class="badge badge-sin">—</span>':r.pen1===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen1+' pend.</span>'}</td>
+          <td>${celdaNotas(r.notas1)}</td>
           <td>${notaBadge(r.pn1)}</td>
           <td>${celdaTray(r.tray2)}</td>
-          <td>${r.mat2===0?'<span class="badge badge-sin">—</span>':r.pen2===0?'<span class="badge badge-apr">✓ Aprobado</span>':'<span class="badge badge-pen">'+r.pen2+' pend.</span>'}</td>
+          <td>${celdaNotas(r.notas2)}</td>
           <td>${notaBadge(r.pn2)}</td>
           ${riteBtnOnclick?`<td><button class="btn btn-secondary btn-sm" onclick="${riteBtnOnclick(cid,r.a.id)}">RITE</button></td>`:''}
         </tr>`;
