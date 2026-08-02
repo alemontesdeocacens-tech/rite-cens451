@@ -593,12 +593,10 @@ tr:hover td{background:#fafaf8}
   </div>
   <div class="card no-print">
     <div class="field-row">
-      <div class="field"><label>Curso</label><select id="pend-curso-sel" onchange="mostrarPendientes()"></select></div>
+      <div class="field"><label>Curso</label><select id="pend-curso-sel" onchange="actualizarModPendientes();mostrarPendientes()"></select></div>
       <div class="field"><label>Módulo</label>
         <select id="pend-mod-sel" onchange="mostrarPendientes()">
           <option value="">Ambos módulos</option>
-          <option value="1">Módulo 1 (1° Cuatrimestre)</option>
-          <option value="2">Módulo 2 (2° Cuatrimestre)</option>
         </select>
       </div>
     </div>
@@ -1616,50 +1614,105 @@ function setupMenuPrec(){
 // =====================================================================
 // PENDIENTES
 // =====================================================================
+// Devuelve el número de módulo real según el año del curso y el cuatrimestre
+// 1°año: Q1=Mód.1, Q2=Mód.2 | 2°año: Q1=Mód.3, Q2=Mód.4 | 3°año: Q1=Mód.5, Q2=Mód.6
+function nroModulo(cursoNombreStr, cuatri){
+  const anio=parseInt((cursoNombreStr||'').charAt(0))||1;
+  return (anio-1)*2 + parseInt(cuatri);
+}
+
+function actualizarModPendientes(){
+  const cid=document.getElementById('pend-curso-sel').value;
+  const curso=CURSOS.find(c=>c.id===cid);
+  const m1=nroModulo(curso?.nombre,1);
+  const m2=nroModulo(curso?.nombre,2);
+  const sel=document.getElementById('pend-mod-sel');
+  sel.innerHTML=`
+    <option value="">Ambos módulos</option>
+    <option value="${m1}">Módulo ${m1} (1° Cuatrimestre)</option>
+    <option value="${m2}">Módulo ${m2} (2° Cuatrimestre)</option>
+  `;
+}
+
 function setupPendientes(){
   poblaCursoSel('pend-curso-sel');
+  actualizarModPendientes();
   mostrarPendientes();
 }
-function mostrarPendientes(){
+
+async function mostrarPendientes(){
   const cid=document.getElementById('pend-curso-sel').value;
   const modFiltro=document.getElementById('pend-mod-sel').value;
+  const curso=CURSOS.find(c=>c.id===cid);
+  const el=document.getElementById('pend-content');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Cargando pendientes…</div>';
+
+  // Traemos datos reales del Sheet
+  let sheetData=null;
+  try {
+    sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:cid});
+  } catch(e){
+    console.warn('No se pudo traer datos del sheet para pendientes:', e);
+  }
+
   const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
   const resultado=[];
+
   alumnos.forEach(a=>{
     const pendMats=[];
-    Object.keys(datosLocales).forEach(k=>{
-      if(!k.startsWith('cierre_')) return;
-      const sin=k.replace('cierre_','');
-      const partes=sin.split('_');
-      if(partes[0]!==cid) return;
-      const qPart=partes[partes.length-1];
-      const q=parseInt(qPart.replace('Q',''));
-      if(modFiltro&&q!==parseInt(modFiltro)) return;
-      const materia=partes.slice(1,-1).join(' ');
-      const d=datosLocales[k][a.id];
-      if(!d||d.nota===null||d.nota===undefined) return;
-      if(parseInt(d.nota)<7){
+    if(sheetData){
+      (sheetData.cierres||[]).filter(c=>
+        String(c.alumno_id).trim()===String(a.id).trim()&&
+        c.nota!==''&&c.nota!==null&&c.nota!==undefined&&
+        parseInt(c.nota)<7
+      ).forEach(c=>{
+        const q=parseInt(c.cuatrimestre);
+        const mod=nroModulo(curso?.nombre,q);
+        if(modFiltro&&mod!==parseInt(modFiltro)) return;
+        // Verificar si recuperó
         const turnos=q===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
-        let recupero=false;
-        for(const t of turnos){
-          const rn=datosLocales[`rec_${sin}_${t}`]?.[a.id]?.nota;
-          if(rn&&parseInt(rn)>=7){ recupero=true; break; }
+        const recupero=(sheetData.recups||[]).some(r=>
+          String(r.alumno_id).trim()===String(a.id).trim()&&
+          r.materia===c.materia&&String(r.cuatrimestre)===String(q)&&
+          r.nota!==''&&r.nota!==null&&parseInt(r.nota)>=7
+        );
+        if(!recupero) pendMats.push({materia:c.materia,q,mod,nota:c.nota});
+      });
+    } else {
+      // Fallback localStorage
+      Object.keys(datosLocales).forEach(k=>{
+        if(!k.startsWith('cierre_')) return;
+        const sin=k.replace('cierre_','');
+        const partes=sin.split('_');
+        if(partes[0]!==cid) return;
+        const q=parseInt(partes[partes.length-1].replace('Q',''));
+        const mod=nroModulo(curso?.nombre,q);
+        if(modFiltro&&mod!==parseInt(modFiltro)) return;
+        const materia=partes.slice(1,-1).join(' ');
+        const d=datosLocales[k][a.id];
+        if(!d||d.nota===null||d.nota===undefined) return;
+        if(parseInt(d.nota)<7){
+          const turnos=q===1?['agosto','diciembre','febrero']:['diciembre','febrero'];
+          let recupero=false;
+          for(const t of turnos){
+            const rn=datosLocales[`rec_${sin}_${t}`]?.[a.id]?.nota;
+            if(rn&&parseInt(rn)>=7){ recupero=true; break; }
+          }
+          if(!recupero) pendMats.push({materia,q,mod,nota:d.nota});
         }
-        if(!recupero) pendMats.push({materia,q,nota:d.nota});
-      }
-    });
+      });
+    }
     if(pendMats.length) resultado.push({alumno:a,pendMats});
   });
-  const el=document.getElementById('pend-content');
+
   if(!resultado.length){
-    const modTxt = modFiltro ? ' (Módulo ' + modFiltro + ')' : '';
-    el.innerHTML='<div class="ok-box">\u2713 No hay alumnos con materias pendientes en este curso' + modTxt + '.</div>';
+    el.innerHTML='<div class="ok-box">✓ No hay alumnos con materias pendientes en este curso.</div>';
     return;
   }
   el.innerHTML=resultado.map(r=>`
     <div class="pend-alumno">
       <div class="pa-nombre">⚠ ${r.alumno.nombre} — ${r.pendMats.length} materia${r.pendMats.length>1?'s':''} pendiente${r.pendMats.length>1?'s':''}</div>
-      ${r.pendMats.map(m=>`<div class="pa-mat">· ${m.materia} (Mód. ${m.q}) — Nota: ${m.nota}</div>`).join('')}
+      ${r.pendMats.map(m=>`<div class="pa-mat">· ${m.materia} (Módulo ${m.mod}) — Nota: ${m.nota}</div>`).join('')}
     </div>
   `).join('');
 }
@@ -1918,11 +1971,11 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
         <p>${alumno.nombre}</p>
         <span>Curso: ${curso.nombre} &nbsp;·&nbsp; Preceptor/a: ${curso.preceptor} &nbsp;·&nbsp; Año: ${cicloParaUsar}</span>
       </div>
-      <div class="rite-section">Módulo 1 — 1° Cuatrimestre</div>
+      <div class="rite-section">Módulo ${nroModulo(curso.nombre,1)} — 1° Cuatrimestre</div>
       ${tablaModuloPreview(mat1,1,proy1)}
       ${estadoMod(mod1)}
       ${mat1.length?`<div class="rite-section" style="font-size:10px">Saberes — 1° Cuatrimestre</div>${contBoxPreview(mat1)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
-      <div class="rite-section" style="margin-top:12px">Módulo 2 — 2° Cuatrimestre</div>
+      <div class="rite-section" style="margin-top:12px">Módulo ${nroModulo(curso.nombre,2)} — 2° Cuatrimestre</div>
       ${tablaModuloPreview(mat2,2,proy2)}
       ${estadoMod(mod2)}
       ${mat2.length?`<div class="rite-section" style="font-size:10px">Saberes — 2° Cuatrimestre</div>${contBoxPreview(mat2)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
@@ -2031,25 +2084,25 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
         <span><span class="tep" style="padding:1px 5px">TEP</span> En Proceso</span>
         <span><span class="ted" style="padding:1px 5px">TED</span> Discontinua</span>
       </div>
-      <div class="p-seccion">Módulo 1 — Primer Cuatrimestre</div>
+      <div class="p-seccion">Módulo ${nroModulo(curso.nombre,1)} — Primer Cuatrimestre</div>
       ${tablaPrint(mat1,1,proy1)}
       <div class="p-modulo-estado">
-        <b>Módulo 1:</b> &nbsp;
+        <b>Módulo ${nroModulo(curso.nombre,1)}:</b> &nbsp;
         ${estadoModPrint(mod1)}
       </div>
       <div class="p-cont-bloque">
-        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 1</div>
+        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo ${nroModulo(curso.nombre,1)}</div>
         <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
         ${contsPrint(mat1)}
       </div>
-      <div class="p-seccion">Módulo 2 — Segundo Cuatrimestre</div>
+      <div class="p-seccion">Módulo ${nroModulo(curso.nombre,2)} — Segundo Cuatrimestre</div>
       ${tablaPrint(mat2,2,proy2)}
       <div class="p-modulo-estado">
-        <b>Módulo 2:</b> &nbsp;
+        <b>Módulo ${nroModulo(curso.nombre,2)}:</b> &nbsp;
         ${estadoModPrint(mod2)}
       </div>
       <div class="p-cont-bloque">
-        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo 2</div>
+        <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo ${nroModulo(curso.nombre,2)}</div>
         <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
         ${contsPrint(mat2)}
       </div>
@@ -2315,10 +2368,14 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
     }
   }
 
+  const cursoInf=CURSOS.find(c=>c.id===cid);
+  const mod1label=`Módulo ${nroModulo(cursoInf?.nombre,1)}`;
+  const mod2label=`Módulo ${nroModulo(cursoInf?.nombre,2)}`;
+
   return `<div class="card">
     <div class="section-label">Resumen general · ${cursoNombre(cid)}</div>
     <div class="tabla-wrap"><table>
-      <thead><tr><th>Alumno/a</th><th>Bim. 1</th><th>Módulo 1</th><th>Proy.1</th><th>Bim. 2</th><th>Módulo 2</th><th>Proy.2</th>${riteBtnOnclick?'<th></th>':''}</tr></thead>
+      <thead><tr><th>Alumno/a</th><th>Bim. 1</th><th>${mod1label}</th><th>Proy.1</th><th>Bim. 2</th><th>${mod2label}</th><th>Proy.2</th>${riteBtnOnclick?'<th></th>':''}</tr></thead>
       <tbody>
         ${resumen.map(r=>{
           const celdaTray=(lista)=>{
