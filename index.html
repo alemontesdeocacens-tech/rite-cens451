@@ -556,6 +556,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Alumnos por curso</div>
       <div class="mc-desc">Listado completo</div>
     </button>
+    <button class="menu-card" onclick="go('s-promedios','')">
+      <div class="mc-icon">🏆</div>
+      <div class="mc-title">Mejores promedios</div>
+      <div class="mc-desc">Ranking por curso · PDF y Excel</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -652,6 +657,31 @@ tr:hover td{background:#fafaf8}
     <div class="field"><label>Curso</label><select id="ac-curso" onchange="mostrarAlumnosCurso()"></select></div>
   </div>
   <div id="ac-content"></div>
+</div>
+
+<!-- ============ MEJORES PROMEDIOS ============ -->
+<div class="screen" id="s-promedios">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Mejores promedios</div><div class="ns" id="prom-sub"></div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Curso</label><select id="prom-curso-sel" onchange="mostrarPromedios()"></select></div>
+      <div class="field"><label>Cuatrimestre</label>
+        <select id="prom-q-sel" onchange="mostrarPromedios()">
+          <option value="anual">Anual</option>
+          <option value="1">1° Cuatrimestre</option>
+          <option value="2">2° Cuatrimestre</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:10px">
+      <button class="btn btn-secondary btn-sm no-print" onclick="descargarPromediosPDF()">🖨 PDF</button>
+      <button class="btn btn-secondary btn-sm no-print" onclick="descargarPromediosExcel()">📊 Excel</button>
+    </div>
+  </div>
+  <div id="prom-content"></div>
 </div>
 
 <!-- ============ MENÚ DICYT ============ -->
@@ -1073,6 +1103,7 @@ function go(screenId, arg){
     's-informe-publico':setupInformePublico,
     's-ver-notas':setupVerNotas,
     's-alumnos-curso':setupAlumnosCurso,
+    's-promedios':setupPromedios,
     's-menu-dicyt':setupMenuDicyt,
     's-dicyt-proyecto':setupDicytProyecto,
     's-pendientes':setupPendientes,
@@ -1904,6 +1935,25 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
   const mat1=materiasAlumno.filter(m=>m.cuatri===1);
   const mat2=materiasAlumno.filter(m=>m.cuatri===2);
 
+  // ── Asistencia desde el Sheet de Asistencia ──────────────────────
+  let asistencia={q1:null,q2:null};
+  try {
+    asistencia=await api('getAsistenciaAlumno',{nombreAlumno:alumno.nombre,cursoId:cid});
+  } catch(e){
+    console.warn('No se pudo traer asistencia:', e);
+  }
+
+  function asistenciaHTML(stats, cuatri){
+    if(!stats) return '<span style="color:var(--texto3);font-size:11px">Sin datos de asistencia</span>';
+    const color=stats.pct>=75?'#1a5c3a':'#c62828';
+    return `<span style="font-size:12px">
+      Clases dictadas: <b>${stats.dias}</b> &nbsp;·&nbsp;
+      Asistidas: <b>${stats.asistidas}</b> &nbsp;·&nbsp;
+      <span style="color:${color};font-weight:700">${stats.pct}%</span>
+      ${stats.pct<75?'<span style="color:#c62828;font-size:11px"> ⚠ En riesgo de regularidad</span>':''}
+    </span>`;
+  }
+
   function calcModulo(mats,proyNota){
     if(!mats.length) return {tray:'—',estado:'SIN DATOS'};
     const sinCerrar=mats.filter(m=>m.nota===null||m.nota===undefined);
@@ -2003,10 +2053,18 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
       ${tablaModuloPreview(mat1,1,proy1)}
       ${estadoMod(mod1)}
       ${mat1.length?`<div class="rite-section" style="font-size:10px">Saberes — 1° Cuatrimestre</div>${contBoxPreview(mat1)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
+      <div class="rite-cont-box" style="margin-top:6px">
+        <b style="font-size:11px">📅 Asistencia — 1° Cuatrimestre</b><br>
+        ${asistenciaHTML(asistencia.q1,1)}
+      </div>
       <div class="rite-section" style="margin-top:12px">Módulo ${nroModulo(curso.nombre,2)} — 2° Cuatrimestre</div>
       ${tablaModuloPreview(mat2,2,proy2)}
       ${estadoMod(mod2)}
       ${mat2.length?`<div class="rite-section" style="font-size:10px">Saberes — 2° Cuatrimestre</div>${contBoxPreview(mat2)||'<div style="font-size:11px;color:var(--texto3);padding:4px 0">Sin contenidos cargados.</div>'}` :''}
+      <div class="rite-cont-box" style="margin-top:6px">
+        <b style="font-size:11px">📅 Asistencia — 2° Cuatrimestre</b><br>
+        ${asistenciaHTML(asistencia.q2,2)}
+      </div>
       <div style="margin-top:12px;font-size:10px;color:var(--texto3);border-top:1px solid var(--borde);padding-top:8px">
         Generado: ${hoy()} · CENS Nº 451 · La Matanza · RITE CENS Digital
       </div>
@@ -2123,6 +2181,12 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
         <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
         ${contsPrint(mat1)}
       </div>
+      <div style="margin:4px 0 8px;padding:4px 8px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;font-size:8px">
+        <b>Asistencia 1° Cuatrimestre:</b> &nbsp;
+        ${asistencia.q1
+          ? `Clases dictadas: <b>${asistencia.q1.dias}</b> &nbsp;·&nbsp; Asistidas: <b>${asistencia.q1.asistidas}</b> &nbsp;·&nbsp; <b style="color:${asistencia.q1.pct>=75?'#1a5c3a':'#c62828'}">${asistencia.q1.pct}%</b>${asistencia.q1.pct<75?' ⚠ En riesgo':''}`
+          : 'Sin datos de asistencia'}
+      </div>
       <div class="p-seccion">Módulo ${nroModulo(curso.nombre,2)} — Segundo Cuatrimestre</div>
       ${tablaPrint(mat2,2,proy2)}
       <div class="p-modulo-estado">
@@ -2133,6 +2197,12 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
         <div class="p-cont-titulo">Saberes enseñados · Aprendizajes alcanzados · Saberes pendientes — Módulo ${nroModulo(curso.nombre,2)}</div>
         <div class="p-cont-row" style="font-weight:700;background:#f0f0f0;font-size:8px"><span>Materia</span><span>Saberes alcanzados</span><span>Saberes pendientes</span></div>
         ${contsPrint(mat2)}
+      </div>
+      <div style="margin:4px 0 8px;padding:4px 8px;background:#f5f5f5;border:1px solid #ddd;border-radius:4px;font-size:8px">
+        <b>Asistencia 2° Cuatrimestre:</b> &nbsp;
+        ${asistencia.q2
+          ? `Clases dictadas: <b>${asistencia.q2.dias}</b> &nbsp;·&nbsp; Asistidas: <b>${asistencia.q2.asistidas}</b> &nbsp;·&nbsp; <b style="color:${asistencia.q2.pct>=75?'#1a5c3a':'#c62828'}">${asistencia.q2.pct}%</b>${asistencia.q2.pct<75?' ⚠ En riesgo':''}`
+          : 'Sin datos de asistencia'}
       </div>
       <div class="nota-legal">
         La calificación se expresa en números enteros en la escala de 1 (uno) a 10 (diez). La calificación mínima para la aprobación es de 7 (siete). Cada módulo se considera APROBADO cuando el/la estudiante ha aprobado todas las asignaturas y participado en el Proyecto de Acción. Se considera PENDIENTE cuando no ha alcanzado los aprendizajes correspondientes o ha tenido escasa vinculación pedagógica.
@@ -2579,6 +2649,99 @@ function mostrarAlumnosCurso(){
       <tbody>${alumnos.map((a,i)=>`<tr><td style="color:var(--texto3)">${i+1}</td><td class="td-nombre">${a.nombre}</td></tr>`).join('')}</tbody>
     </table></div>
   </div>`;
+}
+
+// =====================================================================
+// MEJORES PROMEDIOS
+// =====================================================================
+let promDataActual=[];
+
+async function setupPromedios(){
+  poblaCursoSel('prom-curso-sel');
+  await mostrarPromedios();
+}
+
+async function mostrarPromedios(){
+  const cid=document.getElementById('prom-curso-sel').value;
+  const q=document.getElementById('prom-q-sel').value;
+  document.getElementById('prom-sub').textContent=cursoNombre(cid);
+  const el=document.getElementById('prom-content');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Calculando promedios…</div>';
+
+  let rawData=[];
+  try {
+    rawData=await api('getPromediosCurso',{ciclo:cicloActual,cursoId:cid});
+  } catch(e){
+    el.innerHTML='<div class="warn-box">No se pudieron traer los datos del sheet.</div>';
+    return;
+  }
+
+  // Enriquecemos con nombre del alumno
+  const alumnos=alumnosDeCurso(cid);
+  const datos=rawData.map(r=>{
+    const al=alumnos.find(a=>String(a.id).trim()===String(r.alumnoId).trim());
+    const prom=q==='1'?r.promQ1:q==='2'?r.promQ2:r.promAnual;
+    return {nombre:al?al.nombre:r.alumnoId, prom, cantMat:q==='1'?r.cantMatQ1:q==='2'?r.cantMatQ2:r.cantMatQ1+r.cantMatQ2};
+  }).filter(r=>r.prom!==null).sort((a,b)=>b.prom-a.prom);
+
+  promDataActual=datos;
+
+  const qLabel=q==='1'?`Módulo ${nroModulo(cursoNombre(cid),1)}`:q==='2'?`Módulo ${nroModulo(cursoNombre(cid),2)}`:'Anual';
+
+  if(!datos.length){
+    el.innerHTML='<div class="empty">Sin notas cargadas para este curso y período.</div>';
+    return;
+  }
+
+  el.innerHTML=`<div class="card">
+    <div class="section-label">🏆 Ranking de promedios · ${cursoNombre(cid)} · ${qLabel}</div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>#</th><th>Alumno/a</th><th>Promedio</th><th>Materias</th></tr></thead>
+      <tbody>${datos.map((d,i)=>{
+        const medal=i===0?'🥇':i===1?'🥈':i===2?'🥉':'';
+        const color=d.prom>=7?'#1a5c3a':'#c62828';
+        return `<tr>
+          <td style="color:var(--texto3);font-weight:600">${medal||i+1}</td>
+          <td class="td-nombre">${d.nombre}</td>
+          <td style="color:${color};font-weight:700;font-size:15px">${d.prom.toFixed(2)}</td>
+          <td style="color:var(--texto3)">${d.cantMat} mat.</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>
+  </div>`;
+}
+
+function descargarPromediosPDF(){
+  if(!promDataActual.length){ toast('Sin datos para exportar','err'); return; }
+  const tituloOrig=document.title;
+  const cid=document.getElementById('prom-curso-sel').value;
+  const q=document.getElementById('prom-q-sel').value;
+  const qLabel=q==='1'?`M${nroModulo(cursoNombre(cid),1)}`:q==='2'?`M${nroModulo(cursoNombre(cid),2)}`:'Anual';
+  document.title=`Promedios_${cursoNombre(cid).replace(/°/g,'').replace(/\s/g,'')}_${qLabel}_${cicloActual}`;
+  window.print();
+  setTimeout(()=>{ document.title=tituloOrig; },1000);
+}
+
+function descargarPromediosExcel(){
+  if(!promDataActual.length){ toast('Sin datos para exportar','err'); return; }
+  const cid=document.getElementById('prom-curso-sel').value;
+  const q=document.getElementById('prom-q-sel').value;
+  const qLabel=q==='1'?`Módulo ${nroModulo(cursoNombre(cid),1)}`:q==='2'?`Módulo ${nroModulo(cursoNombre(cid),2)}`:'Anual';
+
+  // Armamos CSV (compatible con Excel)
+  let csv=`Ranking;Alumno/a;Promedio ${qLabel};Materias\n`;
+  promDataActual.forEach((d,i)=>{
+    csv+=`${i+1};"${d.nombre}";${d.prom.toFixed(2).replace('.',',')};${d.cantMat}\n`;
+  });
+
+  const blob=new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download=`Promedios_${cursoNombre(cid).replace(/°/g,'').replace(/\s/g,'')}_${qLabel.replace(/\s/g,'')}_${cicloActual}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+  toast('Excel descargado ✓');
 }
 
 // =====================================================================
