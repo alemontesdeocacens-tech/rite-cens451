@@ -1586,7 +1586,7 @@ async function guardarRecup(turno){
 // =====================================================================
 // MENÚ PRECEPTOR
 // =====================================================================
-function setupMenuPrec(){
+async function setupMenuPrec(){
   document.getElementById('prec-header-title').textContent=sesion.rol==='directivo'?'Directivo/a':'Preceptoría';
   document.getElementById('prec-header-user').textContent=sesion.nombre;
   document.getElementById('prec-header-ciclo').textContent=cicloActual;
@@ -1595,14 +1595,42 @@ function setupMenuPrec(){
   const alumnosProp=sesion.rol==='preceptor'?ALUMNOS_RAW.filter(a=>cursosIds.has(a.curso)):ALUMNOS_RAW;
   const alumnosIds=new Set(alumnosProp.map(a=>a.id));
   const total=alumnosProp.length;
-  let aprob=0,pend=0,notas=0;
-  Object.keys(datosLocales).forEach(k=>{
-    if(!k.startsWith('cierre_')) return;
-    Object.entries(datosLocales[k]).forEach(([aid,v])=>{
-      if(sesion.rol==='preceptor'&&!alumnosIds.has(aid)) return;
-      if(v.nota!==null&&v.nota!==undefined){ notas++; if(parseInt(v.nota)>=7)aprob++; else pend++; }
+
+  // Mostramos totales mientras carga
+  document.getElementById('prec-stats').innerHTML=`
+    <div class="stat"><div class="sn">${total}</div><div class="sl">Alumnos</div></div>
+    <div class="stat verde"><div class="sn">…</div><div class="sl">Aprobados</div></div>
+    <div class="stat rojo"><div class="sn">…</div><div class="sl">Pendientes</div></div>
+    <div class="stat azul"><div class="sn">${cursosProp.length}</div><div class="sl">Cursos</div></div>
+  `;
+
+  // Traemos cierres reales del Sheet para todos los cursos del preceptor
+  let aprob=0,pend=0;
+  try {
+    // Consultamos cada curso del preceptor en paralelo
+    const resultados=await Promise.all(
+      cursosProp.map(c=>api('getRiteCurso',{ciclo:cicloActual,cursoId:c.id}).catch(()=>null))
+    );
+    resultados.forEach(sheetData=>{
+      if(!sheetData) return;
+      (sheetData.cierres||[]).forEach(c=>{
+        if(!alumnosIds.has(String(c.alumno_id).trim())) return;
+        if(c.nota===''||c.nota===null||c.nota===undefined) return;
+        if(parseInt(c.nota)>=7) aprob++; else pend++;
+      });
     });
-  });
+  } catch(e){
+    console.warn('No se pudieron traer cierres del sheet para el preceptor:', e);
+    // Fallback a localStorage
+    Object.keys(datosLocales).forEach(k=>{
+      if(!k.startsWith('cierre_')) return;
+      Object.entries(datosLocales[k]).forEach(([aid,v])=>{
+        if(sesion.rol==='preceptor'&&!alumnosIds.has(aid)) return;
+        if(v.nota!==null&&v.nota!==undefined){ if(parseInt(v.nota)>=7)aprob++; else pend++; }
+      });
+    });
+  }
+
   document.getElementById('prec-stats').innerHTML=`
     <div class="stat"><div class="sn">${total}</div><div class="sl">Alumnos</div></div>
     <div class="stat verde"><div class="sn">${aprob}</div><div class="sl">Aprobados</div></div>
