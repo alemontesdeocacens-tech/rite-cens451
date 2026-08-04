@@ -2759,12 +2759,30 @@ function setupDicytProyecto(){
   poblaCursoSel('dicyt-curso');
   cargarDicytAlumnos();
 }
-function cargarDicytAlumnos(){
+async function cargarDicytAlumnos(){
   const cid=document.getElementById('dicyt-curso').value;
   const q=document.getElementById('dicyt-cuatri').value;
   const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
-  const data=datosLocales[keyProyecto(cid,q)]||{};
-  document.getElementById('dicyt-tbody').innerHTML=alumnos.map(a=>{
+  const tbody=document.getElementById('dicyt-tbody');
+  tbody.innerHTML='<tr><td colspan="3" style="text-align:center;font-style:italic">Cargando notas...</td></tr>';
+
+  // Traigo las notas guardadas en la planilla (otro dispositivo/sesión puede haberlas cargado)
+  // y las combino con la caché local, priorizando lo que viene del servidor.
+  let data=datosLocales[keyProyecto(cid,q)]||{};
+  try {
+    const sheetData=await api('getRiteCurso',{ciclo:cicloActual,cursoId:cid});
+    const remota={};
+    (sheetData.proyectos||[]).filter(p=>String(p.cuatrimestre)===String(q)).forEach(p=>{
+      remota[String(p.alumno_id)]={nota:(p.nota!==''&&p.nota!==null&&p.nota!==undefined)?p.nota:null};
+    });
+    data={...data, ...remota};
+    datosLocales[keyProyecto(cid,q)]=data;
+    await guardarDatosLocales();
+  } catch(e){
+    console.warn('No se pudo traer notas del Proyecto desde el servidor, uso caché local:', e);
+  }
+
+  tbody.innerHTML=alumnos.map(a=>{
     const nota=data[a.id]?.nota||'';
     return `<tr>
       <td class="td-nombre">${a.nombre}</td>
