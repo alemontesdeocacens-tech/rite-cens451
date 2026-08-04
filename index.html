@@ -2316,10 +2316,10 @@ async function construirInformeCursoHTML(cid, riteBtnOnclick){
       });
     }
     const pn1=data
-      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.cuatrimestre)==='1'); return p&&p.nota!==''?p.nota:null; })()
+      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.alumno_id).trim()===String(a.id).trim()&&String(p.cuatrimestre)==='1'); return p&&p.nota!==''&&p.nota!==null&&p.nota!==undefined?p.nota:null; })()
       : ((datosLocales[keyProyecto(cid,1)]||{})[a.id]||{}).nota;
     const pn2=data
-      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.cuatrimestre)==='2'); return p&&p.nota!==''?p.nota:null; })()
+      ? (()=>{ const p=(data.proyectos||[]).find(p=>String(p.alumno_id).trim()===String(a.id).trim()&&String(p.cuatrimestre)==='2'); return p&&p.nota!==''&&p.nota!==null&&p.nota!==undefined?p.nota:null; })()
       : ((datosLocales[keyProyecto(cid,2)]||{})[a.id]||{}).nota;
 
     // Trayectorias del bimestre vigente para este alumno, por materia y cuatrimestre
