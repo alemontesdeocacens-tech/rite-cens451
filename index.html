@@ -2330,8 +2330,13 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
   riteActualNombre=alumno.nombre; // usado para nombrar el PDF al imprimir/guardar
 
   const contenedor=document.getElementById(contenedorId);
-  const loadingHTML='<div class="loading"><div class="spinner"></div>Generando RITE…</div>';
-  if(append) contenedor.innerHTML+=loadingHTML; else contenedor.innerHTML=loadingHTML;
+  // ID único para poder borrar SOLO este cartel de carga cuando termine — antes,
+  // en modo "append" (historial multi-ciclo), se agregaba con += y nunca se
+  // sacaba, quedando girando para siempre aunque el RITE ya se hubiera generado.
+  const loadingId='rite-loading-'+cid+'-'+(cicloOverride||cicloActual)+'-'+Math.random().toString(36).slice(2);
+  const loadingHTML=`<div class="loading" id="${loadingId}"><div class="spinner"></div>Generando RITE…</div>`;
+  if(append) contenedor.insertAdjacentHTML('beforeend', loadingHTML);
+  else contenedor.innerHTML=loadingHTML;
 
   const cicloParaUsar=cicloOverride||cicloActual;
 
@@ -2586,6 +2591,8 @@ async function generarRiteParaAlumno(cid, aid, contenedorId, append=false, ciclo
     </div>`;
 
   const contenedorFinal=document.getElementById(contenedorId);
+  const loadingEl=document.getElementById(loadingId);
+  if(loadingEl) loadingEl.remove();
   if(append) contenedorFinal.innerHTML+=previewHTML;
   else contenedorFinal.innerHTML=previewHTML;
 
