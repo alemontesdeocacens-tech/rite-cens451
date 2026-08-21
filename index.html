@@ -386,16 +386,29 @@ tr:hover td{background:#fafaf8}
   <div class="header">
     <div class="header-logo">RITE</div>
     <div style="flex:1">
-      <div class="header-title">Mi RITE</div>
+      <div class="header-title">Mi perfil</div>
       <div class="header-user" id="alu-header-user"></div>
     </div>
     <div class="header-ciclo" id="alu-header-ciclo">2026</div>
   </div>
-  <div id="alu-rite-content">
-    <div class="loading"><div class="spinner"></div>Cargando tu RITE…</div>
+  <div class="tabs no-print">
+    <button class="tab active" id="alu-tab-rite" onclick="setAluTab('rite')">Mi RITE</button>
+    <button class="tab" id="alu-tab-mat" onclick="setAluTab('mat')">Material</button>
+    <button class="tab" id="alu-tab-cal" onclick="setAluTab('cal')">Calendario</button>
   </div>
-  <div id="alu-acciones" style="display:none;margin-bottom:12px" class="no-print">
-    <button class="btn-pdf" onclick="imprimirRite()">🖨 Imprimir / Guardar PDF</button>
+  <div id="alu-panel-rite">
+    <div id="alu-rite-content">
+      <div class="loading"><div class="spinner"></div>Cargando tu RITE…</div>
+    </div>
+    <div id="alu-acciones" style="display:none;margin-bottom:12px" class="no-print">
+      <button class="btn-pdf" onclick="imprimirRite()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+  </div>
+  <div id="alu-panel-mat" style="display:none">
+    <div id="alu-materiales-content"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
+  </div>
+  <div id="alu-panel-cal" style="display:none">
+    <div id="alu-calendario-content"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
   </div>
   <div style="margin-top:14px;text-align:center" class="no-print">
     <button class="btn btn-secondary btn-sm" onclick="logout()">Cerrar sesión</button>
@@ -439,6 +452,16 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Ver notas del curso</div>
       <div class="mc-desc">Todas las materias del curso</div>
     </button>
+    <button class="menu-card" onclick="go('s-materiales-doc','')">
+      <div class="mc-icon">📎</div>
+      <div class="mc-title">Material de estudio</div>
+      <div class="mc-desc">Subir archivos para el curso o un alumno</div>
+    </button>
+    <button class="menu-card" onclick="go('s-calendario-doc','')">
+      <div class="mc-icon">📅</div>
+      <div class="mc-title">Calendario</div>
+      <div class="mc-desc">Entregas, evaluaciones y avisos</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -453,6 +476,74 @@ tr:hover td{background:#fafaf8}
   </div>
   <div id="doc-vc-content"></div>
 </div>
+
+<!-- ============ DOCENTE — MATERIAL DE ESTUDIO ============ -->
+<div class="screen" id="s-materiales-doc">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt">Material de estudio</div><div class="ns" id="mat-doc-sub"></div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Las imágenes se comprimen automáticamente antes de subir para ocupar menos espacio. Elegí "Todo el curso" o un alumno puntual (por ejemplo, para quien no puede asistir).</div>
+    <div class="field"><label>Para</label><select id="mat-doc-alumno"></select></div>
+    <div class="field"><label>Título (opcional)</label><input type="text" id="mat-doc-titulo" placeholder="Ej: Guía de ejercicios unidad 2"></div>
+    <div class="field"><label>Archivo</label><input type="file" id="mat-doc-archivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
+    <button class="btn btn-primary" style="margin-top:4px" onclick="subirMaterialDoc()" id="mat-doc-btn">📎 Subir material</button>
+  </div>
+  <div class="card">
+    <div class="section-label">Ya subido para este curso</div>
+    <div id="mat-doc-lista"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
+  </div>
+</div>
+
+<!-- ============ DOCENTE — CALENDARIO ============ -->
+<div class="screen" id="s-calendario-doc">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-doc','')">←</button>
+    <div class="nav-info"><div class="nt">Calendario</div><div class="ns" id="cal-doc-sub"></div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Avisá entregas de TP, evaluaciones u otros eventos. Le aparece al alumno cuando entra a la app, no se envía ningún mail.</div>
+    <div class="field"><label>Tipo</label>
+      <select id="cal-doc-tipo">
+        <option value="Entrega TP">Entrega de trabajo práctico</option>
+        <option value="Evaluación">Evaluación</option>
+        <option value="Aviso">Aviso</option>
+        <option value="Otro">Otro</option>
+      </select>
+    </div>
+    <div class="field"><label>Para</label><select id="cal-doc-alumno"></select></div>
+    <div class="field"><label>Título</label><input type="text" id="cal-doc-titulo" placeholder="Ej: Entrega TP unidad 3"></div>
+    <div class="field"><label>Descripción (opcional)</label><textarea id="cal-doc-desc" placeholder="Detalles adicionales"></textarea></div>
+    <div class="field"><label>Fecha</label><input type="date" id="cal-doc-fecha"></div>
+    <button class="btn btn-primary" style="margin-top:4px" onclick="guardarEventoDoc()" id="cal-doc-btn">📅 Guardar evento</button>
+  </div>
+  <div class="card">
+    <div class="section-label">Eventos cargados</div>
+    <div id="cal-doc-lista"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
+  </div>
+</div>
+
+<!-- ============ VER MATERIAL DE ESTUDIO (preceptor / directivo / dicyt) ============ -->
+<div class="screen" id="s-materiales-ver">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go(sesion&&sesion.rol==='dicyt'?'s-menu-dicyt':'s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Material de estudio</div><div class="ns">Archivos subidos por los/as docentes</div></div>
+  </div>
+  <div class="field"><label>Curso</label><select id="mv-curso-sel" onchange="cargarMaterialesVer()"></select></div>
+  <div id="mv-lista"></div>
+</div>
+
+<!-- ============ VER CALENDARIO (preceptor / directivo / dicyt) ============ -->
+<div class="screen" id="s-calendario-ver">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go(sesion&&sesion.rol==='dicyt'?'s-menu-dicyt':'s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Calendario</div><div class="ns">Entregas, evaluaciones y avisos por curso</div></div>
+  </div>
+  <div class="field"><label>Curso</label><select id="cv-curso-sel" onchange="cargarCalendarioVer()"></select></div>
+  <div id="cv-lista"></div>
+</div>
+
 
 <!-- ============ BIMESTRE ============ -->
 <div class="screen" id="s-bimestre">
@@ -560,6 +651,16 @@ tr:hover td{background:#fafaf8}
       <div class="mc-icon">🏆</div>
       <div class="mc-title">Mejores promedios</div>
       <div class="mc-desc">Ranking por curso · PDF y Excel</div>
+    </button>
+    <button class="menu-card" onclick="go('s-materiales-ver','')">
+      <div class="mc-icon">📎</div>
+      <div class="mc-title">Material de estudio</div>
+      <div class="mc-desc">Ver lo subido por los/as docentes</div>
+    </button>
+    <button class="menu-card" onclick="go('s-calendario-ver','')">
+      <div class="mc-icon">📅</div>
+      <div class="mc-title">Calendario</div>
+      <div class="mc-desc">Entregas y evaluaciones por curso</div>
     </button>
   </div>
   <div style="margin-top:14px;text-align:center">
@@ -705,6 +806,16 @@ tr:hover td{background:#fafaf8}
       <div class="mc-icon">🔍</div>
       <div class="mc-title">Ver todas las notas</div>
       <div class="mc-desc">Todos los cursos</div>
+    </button>
+    <button class="menu-card" onclick="go('s-materiales-ver','')">
+      <div class="mc-icon">📎</div>
+      <div class="mc-title">Material de estudio</div>
+      <div class="mc-desc">Ver lo subido por los/as docentes</div>
+    </button>
+    <button class="menu-card" onclick="go('s-calendario-ver','')">
+      <div class="mc-icon">📅</div>
+      <div class="mc-title">Calendario</div>
+      <div class="mc-desc">Entregas y evaluaciones por curso</div>
     </button>
   </div>
   <div style="margin-top:14px;text-align:center">
@@ -1097,6 +1208,10 @@ function go(screenId, arg){
     's-contenidos':setupContenidos,
     's-recuperaciones':setupRecuperaciones,
     's-doc-ver-curso':setupDocVerCurso,
+    's-materiales-doc':setupMaterialesDoc,
+    's-materiales-ver':setupMaterialesVer,
+    's-calendario-ver':setupCalendarioVer,
+    's-calendario-doc':setupCalendarioDoc,
     's-menu-prec':setupMenuPrec,
     's-rite-gen':setupRiteGen,
     's-informe-curso':setupInformeCurso,
@@ -1210,8 +1325,22 @@ async function doLogin(){
 // =====================================================================
 // ALUMNO — MI RITE
 // =====================================================================
+let alumnoActual=null;
+let aluMatCargado=false, aluCalCargado=false;
+
+function setAluTab(tab){
+  ['rite','mat','cal'].forEach(t=>{
+    document.getElementById('alu-tab-'+t).classList.toggle('active', t===tab);
+    document.getElementById('alu-panel-'+t).style.display = t===tab?'':'none';
+  });
+  if(tab==='mat'&&!aluMatCargado&&alumnoActual){ aluMatCargado=true; renderMaterialesAlumno(alumnoActual); }
+  if(tab==='cal'&&!aluCalCargado&&alumnoActual){ aluCalCargado=true; renderCalendarioAlumno(alumnoActual); }
+}
+
 async function cargarRiteAlumno(){
   const dni=sesion.dni;
+  alumnoActual=null; aluMatCargado=false; aluCalCargado=false;
+  setAluTab('rite');
   document.getElementById('alu-header-user').textContent=`DNI: ${dni}`;
   document.getElementById('alu-header-ciclo').textContent='Historial completo';
   document.getElementById('alu-acciones').style.display='none';
@@ -1233,6 +1362,7 @@ async function cargarRiteAlumno(){
     return;
   }
 
+  alumnoActual=alumno;
   document.getElementById('alu-header-user').textContent=alumno.nombre;
   document.getElementById('alu-acciones').style.display='';
   await renderRiteAlumnoView(alumno);
@@ -1287,6 +1417,81 @@ async function renderRiteAlumnoView(alumno){
   }
 
   document.getElementById('alu-acciones').style.display='';
+}
+
+async function renderMaterialesAlumno(alumno){
+  const cont=document.getElementById('alu-materiales-content');
+  let materiales=[];
+  try {
+    materiales=await api('getMaterialesAlumno',{ciclo:cicloActual,cursoId:alumno.curso,alumnoId:alumno.id});
+  } catch(e){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--rojo)">No se pudo cargar el material de estudio.</span></div>';
+    return;
+  }
+  if(!materiales.length){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--texto3)">Todavía no hay material cargado.</span></div>';
+    return;
+  }
+
+  // Agrupamos por cuatrimestre y luego por materia
+  const porQ={};
+  materiales.forEach(m=>{
+    const q=String(m.cuatrimestre||'');
+    if(!porQ[q]) porQ[q]={};
+    if(!porQ[q][m.materia]) porQ[q][m.materia]=[];
+    porQ[q][m.materia].push(m);
+  });
+
+  let html='<div class="card">';
+  Object.keys(porQ).sort().forEach(q=>{
+    html+=`<div style="font-weight:600;font-size:13px;margin:10px 0 6px">${q}° Cuatrimestre</div>`;
+    Object.keys(porQ[q]).sort().forEach(materia=>{
+      html+=`<div style="font-size:12px;color:var(--texto2);margin:6px 0 4px">${materia}</div>`;
+      porQ[q][materia].forEach(m=>{
+        html+=`<a href="${m.drive_url}" target="_blank" style="display:block;text-decoration:none;color:var(--texto);padding:6px 0;border-bottom:1px solid var(--borde)">📎 ${m.titulo}</a>`;
+      });
+    });
+  });
+  html+='</div>';
+  cont.innerHTML=html;
+}
+
+function formatearFechaEvento(f){
+  const [y,m,d]=String(f).split('-');
+  return d&&m&&y?`${d}/${m}/${y}`:f;
+}
+
+async function renderCalendarioAlumno(alumno){
+  const cont=document.getElementById('alu-calendario-content');
+  let eventos=[];
+  try {
+    eventos=await api('getEventosAlumno',{ciclo:cicloActual,cursoId:alumno.curso,alumnoId:alumno.id});
+  } catch(e){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--rojo)">No se pudo cargar el calendario.</span></div>';
+    return;
+  }
+  if(!eventos.length){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--texto3)">No hay eventos cargados todavía.</span></div>';
+    return;
+  }
+
+  const hoy=new Date().toISOString().slice(0,10);
+  const proximos=eventos.filter(e=>e.fecha>=hoy);
+  const pasados=eventos.filter(e=>e.fecha<hoy).reverse();
+
+  const pintar=ev=>`<div style="padding:10px 0;border-bottom:1px solid var(--borde)">
+      <div style="font-size:11px;color:var(--texto3)">${formatearFechaEvento(ev.fecha)} · ${ev.materia}</div>
+      <div style="font-weight:600;font-size:13px">${ev.tipo}: ${ev.titulo}</div>
+      ${ev.descripcion?`<div style="font-size:12px;color:var(--texto2);margin-top:2px">${ev.descripcion}</div>`:''}
+    </div>`;
+
+  let html='<div class="card"><div class="section-label">Próximos</div>';
+  html+=proximos.length?proximos.map(pintar).join(''):'<span style="font-size:12px;color:var(--texto3)">No hay eventos próximos.</span>';
+  html+='</div>';
+  if(pasados.length){
+    html+='<div class="card" style="opacity:.65"><div class="section-label">Pasados</div>'+pasados.map(pintar).join('')+'</div>';
+  }
+  cont.innerHTML=html;
 }
 
 // =====================================================================
@@ -1517,6 +1722,316 @@ async function guardarContenidos(){
     toast('Contenidos guardados ✓');
   } catch(e){
     toast('Guardado local ✓');
+  }
+}
+
+// =====================================================================
+// MATERIAL DE ESTUDIO (docente sube archivos para el curso o un alumno)
+// =====================================================================
+const MATERIAL_MAX_BYTES=8*1024*1024; // 8 MB, igual que el backend
+
+function anioDeCurso(cursoId){
+  const nombre=cursoNombre(cursoId);
+  const m=nombre.match(/^\d+/);
+  return m?`${m[0]}° Año`:'';
+}
+
+async function setupMaterialesDoc(){
+  document.getElementById('mat-doc-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  const sel=document.getElementById('mat-doc-alumno');
+  const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">Todo el curso</option>'+
+    alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  document.getElementById('mat-doc-titulo').value='';
+  document.getElementById('mat-doc-archivo').value='';
+  await cargarListaMaterialesDoc();
+}
+
+async function cargarListaMaterialesDoc(){
+  const cont=document.getElementById('mat-doc-lista');
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const materiales=await api('getMaterialesCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+    const propios=materiales.filter(m=>m.materia===sesion.materia&&String(m.cuatrimestre)===String(sesion.cuatrimestre));
+    if(!propios.length){
+      cont.innerHTML='<span style="font-size:12px;color:var(--texto3)">Todavía no subiste material para esta materia y cuatrimestre.</span>';
+      return;
+    }
+    cont.innerHTML=propios.map(m=>{
+      const alumno=m.alumno_id?alumnosDeCurso(sesion.cursoId).find(a=>String(a.id)===String(m.alumno_id)):null;
+      const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+      return `<div class="chip" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;justify-content:space-between">
+        <a href="${m.drive_url}" target="_blank" style="text-decoration:none;color:var(--texto)">
+          📎 <strong>${m.titulo}</strong><br><span style="font-size:11px;color:var(--texto3)">${destino} · ${m.nombre_archivo}</span>
+        </a>
+        <span class="chip-x" onclick="borrarMaterialDoc('${m.id}')">×</span>
+      </div>`;
+    }).join('');
+  } catch(e){
+    cont.innerHTML='<span style="font-size:12px;color:var(--rojo)">No se pudo cargar la lista de material.</span>';
+  }
+}
+
+function leerArchivoBase64(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=()=>res(r.result.split(',')[1]);
+    r.onerror=()=>rej(new Error('No se pudo leer el archivo'));
+    r.readAsDataURL(file);
+  });
+}
+
+// Si es una foto (jpg/png/webp, no gif), la redimensiona y recomprime como JPEG
+// antes de subir. PDF y Word no se tocan: internamente ya vienen comprimidos
+// (docx/xlsx son ZIP, PDF ya comprime sus imágenes) y no hay forma de achicarlos
+// de forma confiable desde el navegador sin herramientas externas.
+function comprimirImagenSiCorresponde(file){
+  return new Promise((res)=>{
+    if(!file.type.startsWith('image/')||file.type==='image/gif'){ res(file); return; }
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{
+      const MAX=1600;
+      let {width,height}=img;
+      if(width>MAX||height>MAX){
+        const ratio=Math.min(MAX/width,MAX/height);
+        width=Math.round(width*ratio); height=Math.round(height*ratio);
+      }
+      const canvas=document.createElement('canvas');
+      canvas.width=width; canvas.height=height;
+      canvas.getContext('2d').drawImage(img,0,0,width,height);
+      canvas.toBlob(blob=>{
+        URL.revokeObjectURL(url);
+        if(blob && blob.size<file.size){
+          const nombreJpg=file.name.replace(/\.[^.]+$/,'')+'.jpg';
+          res(new File([blob],nombreJpg,{type:'image/jpeg'}));
+        } else {
+          res(file); // si no logramos achicarlo (ej. ya era chica), mandamos el original
+        }
+      },'image/jpeg',0.75);
+    };
+    img.onerror=()=>res(file);
+    img.src=url;
+  });
+}
+
+async function subirMaterialDoc(){
+  const input=document.getElementById('mat-doc-archivo');
+  let file=input.files[0];
+  if(!file){ toast('Elegí un archivo','err'); return; }
+
+  const btn=document.getElementById('mat-doc-btn');
+  btn.disabled=true; btn.textContent='Subiendo…';
+  try {
+    file=await comprimirImagenSiCorresponde(file);
+    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
+    const archivoBase64=await leerArchivoBase64(file);
+    const alumnoId=document.getElementById('mat-doc-alumno').value;
+    const titulo=document.getElementById('mat-doc-titulo').value.trim();
+    await api('subirMaterial',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,alumnoId:alumnoId||'',
+      docenteDni:sesion.dni,docenteNombre:sesion.nombre,
+      materia:sesion.materia,anio:anioDeCurso(sesion.cursoId),cuatrimestre:sesion.cuatrimestre,
+      titulo,archivoBase64,nombreArchivo:file.name,mimeType:file.type,
+    });
+    toast('Material subido ✓');
+    document.getElementById('mat-doc-titulo').value='';
+    input.value='';
+    await cargarListaMaterialesDoc();
+  } catch(e){
+    toast('No se pudo subir: '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='📎 Subir material';
+  }
+}
+
+async function borrarMaterialDoc(id){
+  if(!confirm('¿Borrar este material?')) return;
+  try {
+    await api('eliminarMaterial',{id});
+    toast('Material borrado ✓');
+    await cargarListaMaterialesDoc();
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
+// =====================================================================
+// CALENDARIO (docente carga entregas / evaluaciones / avisos)
+// =====================================================================
+async function setupCalendarioDoc(){
+  document.getElementById('cal-doc-sub').textContent=`${sesion.materia} · ${cursoNombre(sesion.cursoId)}`;
+  const sel=document.getElementById('cal-doc-alumno');
+  const alumnos=alumnosDeCurso(sesion.cursoId).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">Todo el curso</option>'+
+    alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  document.getElementById('cal-doc-titulo').value='';
+  document.getElementById('cal-doc-desc').value='';
+  document.getElementById('cal-doc-fecha').value='';
+  await cargarListaEventosDoc();
+}
+
+async function cargarListaEventosDoc(){
+  const cont=document.getElementById('cal-doc-lista');
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const eventos=await api('getEventosCurso',{ciclo:cicloActual,cursoId:sesion.cursoId});
+    const propios=eventos.filter(e=>e.materia===sesion.materia&&String(e.cuatrimestre)===String(sesion.cuatrimestre));
+    if(!propios.length){
+      cont.innerHTML='<span style="font-size:12px;color:var(--texto3)">Todavía no cargaste eventos para esta materia y cuatrimestre.</span>';
+      return;
+    }
+    const alumnos=alumnosDeCurso(sesion.cursoId);
+    cont.innerHTML=propios.map(ev=>{
+      const alumno=ev.alumno_id?alumnos.find(a=>String(a.id)===String(ev.alumno_id)):null;
+      const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+      return `<div class="chip" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;justify-content:space-between">
+        <div>
+          <strong>${ev.tipo}: ${ev.titulo}</strong><br>
+          <span style="font-size:11px;color:var(--texto3)">${formatearFechaEvento(ev.fecha)} · ${destino}</span>
+        </div>
+        <span class="chip-x" onclick="borrarEventoDoc('${ev.id}')">×</span>
+      </div>`;
+    }).join('');
+  } catch(e){
+    cont.innerHTML='<span style="font-size:12px;color:var(--rojo)">No se pudo cargar la lista de eventos.</span>';
+  }
+}
+
+async function guardarEventoDoc(){
+  const titulo=document.getElementById('cal-doc-titulo').value.trim();
+  const fecha=document.getElementById('cal-doc-fecha').value;
+  if(!titulo){ toast('Escribí un título','err'); return; }
+  if(!fecha){ toast('Elegí una fecha','err'); return; }
+
+  const btn=document.getElementById('cal-doc-btn');
+  btn.disabled=true; btn.textContent='Guardando…';
+  try {
+    const alumnoId=document.getElementById('cal-doc-alumno').value;
+    const tipo=document.getElementById('cal-doc-tipo').value;
+    const descripcion=document.getElementById('cal-doc-desc').value.trim();
+    await api('guardarEvento',{
+      ciclo:cicloActual,cursoId:sesion.cursoId,alumnoId:alumnoId||'',
+      docenteDni:sesion.dni,docenteNombre:sesion.nombre,
+      materia:sesion.materia,cuatrimestre:sesion.cuatrimestre,
+      tipo,titulo,descripcion,fecha,
+    });
+    toast('Evento guardado ✓');
+    document.getElementById('cal-doc-titulo').value='';
+    document.getElementById('cal-doc-desc').value='';
+    document.getElementById('cal-doc-fecha').value='';
+    await cargarListaEventosDoc();
+  } catch(e){
+    toast('No se pudo guardar: '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='📅 Guardar evento';
+  }
+}
+
+async function borrarEventoDoc(id){
+  if(!confirm('¿Borrar este evento?')) return;
+  try {
+    await api('eliminarEvento',{id});
+    toast('Evento borrado ✓');
+    await cargarListaEventosDoc();
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
+// Vista de solo lectura para preceptor/a, directivo/a y profesor/a Dicyt
+function setupMaterialesVer(){
+  poblaCursoSel('mv-curso-sel');
+  cargarMaterialesVer();
+}
+
+function renderListaMateriales(materiales, cursoId, mostrarDestino){
+  if(!materiales.length){
+    return '<div class="card"><span style="font-size:12px;color:var(--texto3)">Todavía no se subió material para este curso.</span></div>';
+  }
+  const alumnos=alumnosDeCurso(cursoId);
+  const porQ={};
+  materiales.forEach(m=>{
+    const q=String(m.cuatrimestre||'');
+    if(!porQ[q]) porQ[q]={};
+    if(!porQ[q][m.materia]) porQ[q][m.materia]=[];
+    porQ[q][m.materia].push(m);
+  });
+  let html='<div class="card">';
+  Object.keys(porQ).sort().forEach(q=>{
+    html+=`<div style="font-weight:600;font-size:13px;margin:10px 0 6px">${q}° Cuatrimestre</div>`;
+    Object.keys(porQ[q]).sort().forEach(materia=>{
+      html+=`<div style="font-size:12px;color:var(--texto2);margin:6px 0 4px">${materia}</div>`;
+      porQ[q][materia].forEach(m=>{
+        const alumno=m.alumno_id?alumnos.find(a=>String(a.id)===String(m.alumno_id)):null;
+        const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+        const meta=mostrarDestino?`${destino} · ${m.docente_nombre||''}`:destino;
+        html+=`<a href="${m.drive_url}" target="_blank" style="display:block;text-decoration:none;color:var(--texto);padding:6px 0;border-bottom:1px solid var(--borde)">
+          📎 <strong>${m.titulo}</strong><br><span style="font-size:11px;color:var(--texto3)">${meta}</span>
+        </a>`;
+      });
+    });
+  });
+  html+='</div>';
+  return html;
+}
+
+async function cargarMaterialesVer(){
+  const cursoId=document.getElementById('mv-curso-sel').value;
+  const cont=document.getElementById('mv-lista');
+  if(!cursoId){ cont.innerHTML=''; return; }
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const materiales=await api('getMaterialesCurso',{ciclo:cicloActual,cursoId});
+    cont.innerHTML=renderListaMateriales(materiales, cursoId, true);
+  } catch(e){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--rojo)">No se pudo cargar el material.</span></div>';
+  }
+}
+
+function setupCalendarioVer(){
+  poblaCursoSel('cv-curso-sel');
+  cargarCalendarioVer();
+}
+
+function renderListaEventos(eventos, cursoId){
+  if(!eventos.length){
+    return '<div class="card"><span style="font-size:12px;color:var(--texto3)">Todavía no se cargaron eventos para este curso.</span></div>';
+  }
+  const alumnos=alumnosDeCurso(cursoId);
+  const hoy=new Date().toISOString().slice(0,10);
+  const proximos=eventos.filter(e=>e.fecha>=hoy);
+  const pasados=eventos.filter(e=>e.fecha<hoy).reverse();
+
+  const pintar=ev=>{
+    const alumno=ev.alumno_id?alumnos.find(a=>String(a.id)===String(ev.alumno_id)):null;
+    const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+    return `<div style="padding:10px 0;border-bottom:1px solid var(--borde)">
+      <div style="font-size:11px;color:var(--texto3)">${formatearFechaEvento(ev.fecha)} · ${ev.materia} · ${destino} · ${ev.docente_nombre||''}</div>
+      <div style="font-weight:600;font-size:13px">${ev.tipo}: ${ev.titulo}</div>
+      ${ev.descripcion?`<div style="font-size:12px;color:var(--texto2);margin-top:2px">${ev.descripcion}</div>`:''}
+    </div>`;
+  };
+
+  let html='<div class="card"><div class="section-label">Próximos</div>';
+  html+=proximos.length?proximos.map(pintar).join(''):'<span style="font-size:12px;color:var(--texto3)">No hay eventos próximos.</span>';
+  html+='</div>';
+  if(pasados.length){
+    html+='<div class="card" style="opacity:.65"><div class="section-label">Pasados</div>'+pasados.map(pintar).join('')+'</div>';
+  }
+  return html;
+}
+
+async function cargarCalendarioVer(){
+  const cursoId=document.getElementById('cv-curso-sel').value;
+  const cont=document.getElementById('cv-lista');
+  if(!cursoId){ cont.innerHTML=''; return; }
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const eventos=await api('getEventosCurso',{ciclo:cicloActual,cursoId});
+    cont.innerHTML=renderListaEventos(eventos, cursoId);
+  } catch(e){
+    cont.innerHTML='<div class="card"><span style="font-size:12px;color:var(--rojo)">No se pudo cargar el calendario.</span></div>';
   }
 }
 
