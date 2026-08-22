@@ -662,6 +662,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Calendario</div>
       <div class="mc-desc">Entregas y evaluaciones por curso</div>
     </button>
+    <button class="menu-card" onclick="go('s-situaciones-informe','')">
+      <div class="mc-icon">🛡️</div>
+      <div class="mc-title">Situaciones especiales</div>
+      <div class="mc-desc">Informe de PPAT y Prisión domiciliaria</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -817,6 +822,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Calendario</div>
       <div class="mc-desc">Entregas y evaluaciones por curso</div>
     </button>
+    <button class="menu-card" onclick="go('s-dicyt-situaciones','')">
+      <div class="mc-icon">🛡️</div>
+      <div class="mc-title">Situaciones especiales</div>
+      <div class="mc-desc">Marcar PPAT / Prisión domiciliaria</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -850,6 +860,50 @@ tr:hover td{background:#fafaf8}
     </div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="guardarDicyt()">💾 Guardar notas del Proyecto</button>
   </div>
+</div>
+
+<!-- ============ SITUACIONES ESPECIALES (DICYT — marcar) ============ -->
+<div class="screen" id="s-dicyt-situaciones">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-dicyt','')">←</button>
+    <div class="nav-info"><div class="nt">Situaciones especiales</div><div class="ns">PPAT y Prisión domiciliaria</div></div>
+  </div>
+  <div class="info-box">🛡️ Marcá a cada alumno/a que esté bajo una PPAT (Propuesta Pedagógica de Acompañamiento de Trayectoria) o en Prisión Domiciliaria. Preceptoría y Dirección van a poder ver esta información en su informe.</div>
+  <div class="card no-print">
+    <div class="field"><label>Curso</label><select id="dicyt-sit-curso" onchange="cargarSituacionesDicyt()"></select></div>
+  </div>
+  <div class="card">
+    <div class="section-label">Alumnos/as</div>
+    <div class="tabla-wrap">
+      <table>
+        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Archivo PPAT</th></tr></thead>
+        <tbody id="dicyt-sit-tbody"></tbody>
+      </table>
+    </div>
+    <button class="btn btn-primary" style="margin-top:14px" onclick="guardarSituacionesDicyt()">💾 Guardar situaciones</button>
+  </div>
+</div>
+
+<!-- ============ SITUACIONES ESPECIALES (Informe — preceptor / directivo) ============ -->
+<div class="screen" id="s-situaciones-informe">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Situaciones especiales</div><div class="ns">PPAT y Prisión domiciliaria</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="field-row">
+      <div class="field"><label>Curso</label><select id="sit-inf-curso" onchange="mostrarSituacionesInforme()"></select></div>
+      <div class="field"><label>Situación</label>
+        <select id="sit-inf-tipo" onchange="mostrarSituacionesInforme()">
+          <option value="">Todas</option>
+          <option value="ppat">Solo PPAT</option>
+          <option value="prision">Solo Prisión domiciliaria</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm no-print" style="margin-top:10px" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+  </div>
+  <div id="sit-inf-content"></div>
 </div>
 
 </div><!-- /app -->
@@ -1222,6 +1276,8 @@ function go(screenId, arg){
     's-menu-dicyt':setupMenuDicyt,
     's-dicyt-proyecto':setupDicytProyecto,
     's-pendientes':setupPendientes,
+    's-dicyt-situaciones':setupDicytSituaciones,
+    's-situaciones-informe':setupSituacionesInforme,
   };
   if(handlers[screenId]) handlers[screenId]();
 }
@@ -3333,6 +3389,177 @@ async function guardarDicyt(){
   } catch(e){
     toast('Guardado local ✓');
   }
+}
+
+// =====================================================================
+// SITUACIONES ESPECIALES — PPAT y Prisión Domiciliaria
+// =====================================================================
+// Cache en memoria: alumno_id -> {curso_id, ppat, prision_domiciliaria, observaciones}
+let situacionesCache = {};
+let situacionesCargadas = false;
+
+async function cargarSituaciones(force=false){
+  if(situacionesCargadas && !force) return;
+  try {
+    const rows = await api('getSituaciones',{ciclo:cicloActual});
+    situacionesCache = {};
+    (rows||[]).forEach(r=>{ situacionesCache[r.alumno_id] = r; });
+    situacionesCargadas = true;
+  } catch(e){
+    console.warn('No se pudieron cargar las situaciones especiales:', e);
+  }
+}
+
+// ---- Pantalla Dicyt: marcar situaciones ----
+async function setupDicytSituaciones(){
+  poblaCursoSel('dicyt-sit-curso', true);
+  await cargarSituacionesDicyt();
+}
+async function cargarSituacionesDicyt(){
+  const cid=document.getElementById('dicyt-sit-curso').value;
+  const tbody=document.getElementById('dicyt-sit-tbody');
+  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;font-style:italic">Cargando…</td></tr>';
+  await cargarSituaciones(true);
+  const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
+    .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  if(!alumnos.length){
+    tbody.innerHTML='<tr><td colspan="5" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML=alumnos.map(a=>{
+    const s=situacionesCache[a.id]||{};
+    const obs=(s.observaciones||'').replace(/"/g,'&quot;');
+    return `<tr>
+      <td class="td-nombre">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3)">${cursoNombre(a.curso)}</div>`}</td>
+      <td style="text-align:center"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}></td>
+      <td style="text-align:center"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}></td>
+      <td><input type="text" class="nota-num" style="width:100%;text-align:left" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></td>
+      <td style="min-width:140px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
+    </tr>`;
+  }).join('');
+}
+
+// Genera el contenido de la celda "Archivo PPAT": link + borrar si ya hay uno
+// cargado, o un input de archivo + botón "Subir" si todavía no.
+function archivoPpatCellHTML(alumnoId, s){
+  if(s && s.ppat_archivo_url){
+    return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <a href="${s.ppat_archivo_url}" target="_blank" style="font-size:11px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver archivo'}</a>
+      <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:13px" onclick="eliminarArchivoPpatDicyt('${alumnoId}')">×</span>
+    </div>`;
+  }
+  return `<div style="display:flex;align-items:center;gap:6px">
+    <input type="file" id="ppat-file-${alumnoId}" style="font-size:11px;max-width:110px">
+    <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="subirArchivoPpatDicyt('${alumnoId}')">Subir</button>
+  </div>`;
+}
+
+async function subirArchivoPpatDicyt(alumnoId){
+  const input=document.getElementById('ppat-file-'+alumnoId);
+  const file=input && input.files[0];
+  if(!file){ toast('Elegí un archivo primero','err'); return; }
+  if(file.size>MATERIAL_MAX_BYTES){ toast('El archivo supera los 8 MB','err'); return; }
+
+  const celda=document.getElementById('dicyt-sit-archivo-'+alumnoId);
+  celda.innerHTML='<span style="font-size:11px;color:var(--texto3)">Subiendo…</span>';
+  try {
+    const archivoBase64=await leerArchivoBase64(file);
+    await api('subirArchivoPpat',{
+      ciclo:cicloActual, alumnoId, cursoId:cursoDeAlumno(alumnoId),
+      archivoBase64, nombreArchivo:file.name, mimeType:file.type,
+      actualizadoPor:sesion.nombre,
+    });
+    toast('Archivo de PPAT subido ✓');
+    // También tildamos el checkbox de PPAT en pantalla, ya que subirArchivoPpat lo marca en el sheet.
+    const chk=document.querySelector(`#dicyt-sit-tbody input[data-tipo="ppat"][data-id="${alumnoId}"]`);
+    if(chk) chk.checked=true;
+    await cargarSituaciones(true);
+    celda.innerHTML=archivoPpatCellHTML(alumnoId, situacionesCache[alumnoId]);
+  } catch(e){
+    toast('No se pudo subir: '+e.message,'err');
+    celda.innerHTML=archivoPpatCellHTML(alumnoId, situacionesCache[alumnoId]);
+  }
+}
+
+async function eliminarArchivoPpatDicyt(alumnoId){
+  if(!confirm('¿Borrar el archivo de PPAT de este alumno/a?')) return;
+  try {
+    await api('eliminarArchivoPpat',{ciclo:cicloActual, alumnoId});
+    toast('Archivo borrado ✓');
+    await cargarSituaciones(true);
+    const celda=document.getElementById('dicyt-sit-archivo-'+alumnoId);
+    if(celda) celda.innerHTML=archivoPpatCellHTML(alumnoId, situacionesCache[alumnoId]);
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
+async function guardarSituacionesDicyt(){
+  const filas=document.querySelectorAll('#dicyt-sit-tbody input[data-tipo="ppat"]');
+  if(!filas.length) return;
+  const datos=[...filas].map(chk=>{
+    const aid=chk.dataset.id;
+    const prisionChk=document.querySelector(`#dicyt-sit-tbody input[data-tipo="prision"][data-id="${aid}"]`);
+    const obsInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="obs"][data-id="${aid}"]`);
+    return {
+      alumnoId: aid,
+      cursoId: cursoDeAlumno(aid),
+      ppat: chk.checked,
+      prisionDomiciliaria: prisionChk?prisionChk.checked:false,
+      observaciones: obsInp?obsInp.value.trim():'',
+    };
+  });
+  try {
+    await api('guardarSituacionesBloque',{ciclo:cicloActual, datos, actualizadoPor:sesion.nombre});
+    toast('Situaciones guardadas ✓');
+    await cargarSituacionesDicyt();
+  } catch(e){
+    toast('No se pudo guardar. Reintentá.','err');
+  }
+}
+
+// ---- Pantalla Preceptor/Directivo: informe ----
+async function setupSituacionesInforme(){
+  poblaCursoSel('sit-inf-curso', true);
+  await mostrarSituacionesInforme();
+}
+async function mostrarSituacionesInforme(){
+  const cid=document.getElementById('sit-inf-curso').value;
+  const tipo=document.getElementById('sit-inf-tipo').value;
+  const el=document.getElementById('sit-inf-content');
+  el.innerHTML='<div class="loading"><div class="spinner"></div>Cargando informe…</div>';
+  await cargarSituaciones(true);
+
+  const cursosPermitidos=new Set(cursosVisibles().map(c=>c.id));
+  let lista=Object.values(situacionesCache).filter(s=>{
+    if(!s.ppat && !s.prision_domiciliaria) return false;
+    if(tipo==='ppat' && !s.ppat) return false;
+    if(tipo==='prision' && !s.prision_domiciliaria) return false;
+    if(cid) return s.curso_id===cid;
+    return cursosPermitidos.has(s.curso_id); // sin filtro de curso: respeta el alcance del rol
+  }).map(s=>({...s, nombre:alumnoNombre(s.alumno_id), cursoNom:cursoNombre(s.curso_id)}))
+    .sort((a,b)=>a.cursoNom.localeCompare(b.cursoNom)||a.nombre.localeCompare(b.nombre));
+
+  if(!lista.length){
+    el.innerHTML='<div class="empty">No hay alumnos/as marcados/as en esta situación.</div>';
+    return;
+  }
+
+  el.innerHTML=`<div class="card">
+    <div class="section-label">${lista.length} alumno(s) · ${cid?cursoNombre(cid):'Todos los cursos'}${tipo?' · '+(tipo==='ppat'?'PPAT':'Prisión domiciliaria'):''}</div>
+    <div class="tabla-wrap"><table>
+      <thead><tr><th>Apellido y Nombre</th><th>Curso</th><th>Situación</th><th>Observaciones</th><th class="no-print">Archivo PPAT</th></tr></thead>
+      <tbody>${lista.map(s=>`<tr>
+        <td class="td-nombre">${s.nombre}</td>
+        <td>${s.cursoNom}</td>
+        <td>${[s.ppat?'<span class="badge badge-curso">PPAT</span>':'',s.prision_domiciliaria?'<span class="badge badge-ted">Prisión domic.</span>':''].filter(Boolean).join(' ')}</td>
+        <td style="font-size:12px">${s.observaciones||'—'}</td>
+        <td class="no-print">${s.ppat_archivo_url?`<a href="${s.ppat_archivo_url}" target="_blank" style="font-size:11px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver / descargar'}</a>`:'<span style="font-size:11px;color:var(--texto3)">—</span>'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>
+  </div>`;
 }
 
 // =====================================================================
