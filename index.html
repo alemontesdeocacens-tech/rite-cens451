@@ -621,6 +621,7 @@ tr:hover td{background:#fafaf8}
     <div class="header-ciclo" id="prec-header-ciclo">2026</div>
   </div>
   <div class="stats" id="prec-stats"></div>
+  <div id="ciclo-banner"></div>
   <div class="menu-grid">
     <button class="menu-card" onclick="go('s-rite-gen','')">
       <div class="mc-icon">📄</div>
@@ -989,6 +990,7 @@ const USUARIOS_FIJOS = [
 let sesion = null;
 let datosLocales = {};
 let cicloActual = '2026';
+let cicloSugerido = null; // lo calcula el server según la fecha de hoy
 let materiasCache = [];
 let riteActualNombre = ''; // nombre del alumno del último RITE generado (para nombrar el PDF)
 
@@ -2188,10 +2190,62 @@ async function guardarRecup(turno){
 // =====================================================================
 // MENÚ PRECEPTOR
 // =====================================================================
+// =====================================================================
+// CICLO LECTIVO — sugerencia automática + confirmación manual (solo Directivo/a)
+// =====================================================================
+function mostrarBannerCiclo(){
+  const el=document.getElementById('ciclo-banner');
+  if(!el) return;
+  // Solo Dirección puede cambiar el ciclo; a Preceptoría no le mostramos nada.
+  if(sesion.rol!=='directivo' || !cicloSugerido || cicloSugerido===cicloActual){
+    el.innerHTML='';
+    return;
+  }
+  el.innerHTML=`<div class="warn-box no-print" style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+    <div>📅 Según la fecha de hoy, el ciclo lectivo podría ser <b>${cicloSugerido}</b> (actualmente configurado: ${cicloActual}).</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="confirmarCicloSugerido()">Actualizar a ${cicloSugerido}</button>
+      <button class="btn btn-secondary btn-sm" onclick="abrirCicloManual()">Elegir otro año</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ciclo-banner').innerHTML=''">Ahora no</button>
+    </div>
+  </div>`;
+}
+async function confirmarCicloSugerido(){
+  await guardarCicloLectivo(cicloSugerido);
+}
+function abrirCicloManual(){
+  const el=document.getElementById('ciclo-banner');
+  el.innerHTML=`<div class="warn-box no-print" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <div>Ingresá el año del ciclo lectivo:</div>
+    <input type="number" id="ciclo-manual-input" class="nota-num" style="width:90px" value="${cicloActual}">
+    <button class="btn btn-primary btn-sm" onclick="guardarCicloManual()">Guardar</button>
+    <button class="btn btn-secondary btn-sm" onclick="mostrarBannerCiclo()">Cancelar</button>
+  </div>`;
+}
+async function guardarCicloManual(){
+  const val=document.getElementById('ciclo-manual-input').value.trim();
+  if(!/^\d{4}$/.test(val)){ toast('Ingresá un año válido (4 dígitos)','err'); return; }
+  await guardarCicloLectivo(val);
+}
+async function guardarCicloLectivo(anio){
+  try {
+    await api('setConfig',{clave:'ciclo_lectivo', valor:anio, actualizadoPor:sesion.nombre});
+    cicloActual=anio;
+    document.getElementById('prec-header-ciclo').textContent=cicloActual;
+    document.getElementById('hero-ciclo').textContent=cicloActual;
+    document.getElementById('ciclo-banner').innerHTML='';
+    toast(`Ciclo lectivo actualizado a ${anio} ✓`);
+    await setupMenuPrec(); // refresca stats con el nuevo ciclo
+  } catch(e){
+    toast('No se pudo actualizar el ciclo: '+e.message,'err');
+  }
+}
+
 async function setupMenuPrec(){
   document.getElementById('prec-header-title').textContent=sesion.rol==='directivo'?'Directivo/a':'Preceptoría';
   document.getElementById('prec-header-user').textContent=sesion.nombre;
   document.getElementById('prec-header-ciclo').textContent=cicloActual;
+  mostrarBannerCiclo();
   const cursosProp=cursosVisibles();
   const cursosIds=new Set(cursosProp.map(c=>c.id));
   const alumnosProp=sesion.rol==='preceptor'?ALUMNOS_RAW.filter(a=>cursosIds.has(a.curso)):ALUMNOS_RAW;
@@ -3571,10 +3625,12 @@ async function init(){
   try {
     const config=await api('getConfig',{});
     cicloActual=String(config.ciclo_lectivo||'2026');
+    cicloSugerido=String(config.ciclo_lectivo_sugerido||cicloActual);
     document.getElementById('hero-cens-nombre').textContent=config.nombre_cens||'CENS Nº 451';
     document.getElementById('hero-distrito').textContent=`${config.distrito||'La Matanza'} · ${config.provincia||'Buenos Aires'}`;
   } catch(e){
     cicloActual='2026';
+    cicloSugerido='2026';
   }
   document.getElementById('hero-ciclo').textContent=cicloActual;
   // Cargar listado de alumnos (matrícula real) desde el sheet de Asistencia
