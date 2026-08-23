@@ -3505,7 +3505,7 @@ async function cargarSituacionesDicyt(){
       <td style="text-align:center"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}></td>
       <td><input type="text" class="nota-num" style="width:100%;text-align:left" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></td>
       <td><input type="tel" class="nota-num" style="width:100%;text-align:left" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}"></td>
-      <td style="min-width:140px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
+      <td style="min-width:130px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
     </tr>`;
   }).join('');
 }
@@ -3519,9 +3519,9 @@ function archivoPpatCellHTML(alumnoId, s){
       <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:13px" onclick="eliminarArchivoPpatDicyt('${alumnoId}')">×</span>
     </div>`;
   }
-  return `<div style="display:flex;align-items:center;gap:6px">
-    <input type="file" id="ppat-file-${alumnoId}" style="font-size:11px;max-width:110px">
-    <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px" onclick="subirArchivoPpatDicyt('${alumnoId}')">Subir</button>
+  return `<div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
+    <input type="file" id="ppat-file-${alumnoId}" style="font-size:10px;width:100%">
+    <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px;width:100%" onclick="subirArchivoPpatDicyt('${alumnoId}')">📎 Subir</button>
   </div>`;
 }
 
