@@ -10,16 +10,17 @@
 /* ===== RESET & VARIABLES ===== */
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --verde:#1a5c3a;--verde-claro:#e8f5ee;--verde-mid:#2d7a52;--verde-dark:#123d27;
-  --amarillo:#f5a623;--amarillo-claro:#fff8ed;
+  --verde:#2f7d55;--verde-claro:#eef8f1;--verde-mid:#3f9c6c;--verde-dark:#1f5c3d;
+  --amarillo:#f0a940;--amarillo-claro:#fff6e8;
+  --terracota:#d97a4d;--terracota-claro:#fbece2;
   --rojo:#c0392b;--rojo-claro:#fdf0ee;
-  --azul:#1a4a7a;--azul-claro:#eaf2fb;
-  --gris:#f4f3f0;--borde:#e0ddd5;
-  --texto:#1a1a18;--texto2:#5a5a55;--texto3:#9a9a90;
+  --azul:#3a6ea5;--azul-claro:#eef3fa;
+  --gris:#faf6ef;--borde:#e9decb;
+  --texto:#241f19;--texto2:#635b4d;--texto3:#a39a87;
   --blanco:#ffffff;
-  --radius:10px;--radius-lg:16px;
-  --shadow:0 2px 12px rgba(0,0,0,.08);
-  --shadow-lg:0 8px 32px rgba(0,0,0,.12);
+  --radius:12px;--radius-lg:20px;
+  --shadow:0 2px 12px rgba(90,60,20,.07);
+  --shadow-lg:0 10px 32px rgba(90,60,20,.14);
 }
 body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);font-size:14px;min-height:100vh}
 .app{max-width:720px;margin:0 auto;padding:12px 10px 80px}
@@ -35,9 +36,9 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 .screen{display:none}.screen.active{display:block}
 
 /* ===== PANTALLA INICIO ===== */
-.inicio-hero{background:linear-gradient(135deg,var(--verde-dark) 0%,var(--verde) 60%,var(--verde-mid) 100%);border-radius:20px;padding:28px 24px 24px;margin-bottom:16px;color:white;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
-.inicio-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.05);border-radius:50%}
-.inicio-hero::after{content:'';position:absolute;bottom:-20px;left:30px;width:100px;height:100px;background:rgba(255,255,255,.04);border-radius:50%}
+.inicio-hero{background:linear-gradient(135deg,var(--verde-dark) 0%,var(--verde) 60%,var(--verde-mid) 100%);border-radius:24px;padding:28px 24px 24px;margin-bottom:16px;color:white;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
+.inicio-hero::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(240,169,64,.12);border-radius:50%}
+.inicio-hero::after{content:'';position:absolute;bottom:-20px;left:30px;width:100px;height:100px;background:rgba(255,255,255,.06);border-radius:50%}
 .inicio-hero-logo{font-family:'JetBrains Mono',monospace;font-size:13px;background:rgba(255,255,255,.15);display:inline-block;padding:5px 12px;border-radius:6px;letter-spacing:1.5px;margin-bottom:14px}
 .inicio-hero-title{font-size:22px;font-weight:700;line-height:1.2;margin-bottom:6px}
 .inicio-hero-sub{font-size:13px;opacity:.8;margin-bottom:16px}
@@ -50,7 +51,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 
 /* ===== ROLE BUTTONS ===== */
 .role-btn{width:100%;background:var(--blanco);border:1.5px solid var(--borde);border-radius:var(--radius-lg);padding:14px 18px;cursor:pointer;display:flex;align-items:center;gap:14px;margin-bottom:10px;transition:all .2s;text-align:left}
-.role-btn:hover{border-color:var(--verde);background:var(--verde-claro);box-shadow:0 4px 16px rgba(26,92,58,.12);transform:translateY(-1px)}
+.role-btn:hover{border-color:var(--verde);background:var(--verde-claro);box-shadow:0 4px 16px rgba(47,125,85,.12);transform:translateY(-1px)}
 .role-btn:active{transform:translateY(0)}
 .role-icon{width:44px;height:44px;border-radius:12px;background:var(--verde-claro);display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
 .role-text .rt{font-size:14px;font-weight:600;color:var(--texto)}
@@ -60,7 +61,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 .field{margin-bottom:14px}
 .field label{display:block;font-size:12px;font-weight:500;color:var(--texto2);margin-bottom:5px}
 .field input,.field select,.field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;background:var(--blanco);color:var(--texto);outline:none;transition:all .2s}
-.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--verde);box-shadow:0 0 0 3px rgba(26,92,58,.1)}
+.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--verde);box-shadow:0 0 0 3px rgba(47,125,85,.1)}
 .field textarea{resize:vertical;min-height:70px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .field-hint{font-size:11px;color:var(--texto3);margin-top:4px}
@@ -78,7 +79,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 .btn{padding:10px 20px;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s}
 .btn:active{transform:scale(.98)}
 .btn-primary{background:var(--verde);color:white;width:100%;padding:13px}
-.btn-primary:hover{background:var(--verde-mid);box-shadow:0 4px 16px rgba(26,92,58,.35)}
+.btn-primary:hover{background:var(--verde-mid);box-shadow:0 4px 16px rgba(47,125,85,.35)}
 .btn-secondary{background:var(--gris);border:1.5px solid var(--borde);color:var(--texto)}
 .btn-secondary:hover{background:var(--borde)}
 .btn-sm{padding:5px 12px;font-size:12px}
@@ -106,8 +107,8 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 /* ===== MENU GRID ===== */
 .menu-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .menu-card{background:var(--blanco);border:1.5px solid var(--borde);border-radius:var(--radius-lg);padding:16px;cursor:pointer;text-align:left;transition:all .2s;box-shadow:var(--shadow)}
-.menu-card:hover{border-color:var(--verde);background:var(--verde-claro);transform:translateY(-2px);box-shadow:0 6px 20px rgba(26,92,58,.14)}
-.menu-card .mc-icon{font-size:26px;margin-bottom:8px}
+.menu-card:hover{border-color:var(--verde);background:var(--verde-claro);transform:translateY(-2px);box-shadow:0 6px 20px rgba(47,125,85,.14)}
+.menu-card .mc-icon{font-size:20px;margin-bottom:10px;width:40px;height:40px;border-radius:12px;background:var(--terracota-claro);display:flex;align-items:center;justify-content:center}
 .menu-card .mc-title{font-size:13px;font-weight:600;color:var(--texto)}
 .menu-card .mc-desc{font-size:11px;color:var(--texto2);margin-top:3px}
 
@@ -288,19 +289,19 @@ tr:hover td{background:#fafaf8}
   <div class="card">
     <div class="card-title">¿Con qué perfil ingresás?</div>
     <button class="role-btn" onclick="go('s-login','alumno')">
-      <div class="role-icon">🎓</div>
+      <div class="role-icon" style="background:var(--verde-claro)">🎓</div>
       <div class="role-text"><div class="rt">Estudiante</div><div class="rs">Descargá tu RITE con tu DNI</div></div>
     </button>
     <button class="role-btn" onclick="go('s-login','preceptor')">
-      <div class="role-icon">📋</div>
+      <div class="role-icon" style="background:var(--terracota-claro)">📋</div>
       <div class="role-text"><div class="rt">Preceptor/a</div><div class="rs">Genero RITE e informes por alumno y curso</div></div>
     </button>
     <button class="role-btn" onclick="go('s-login','dicyt')">
-      <div class="role-icon">🔬</div>
+      <div class="role-icon" style="background:var(--amarillo-claro)">🔬</div>
       <div class="role-text"><div class="rt">Profesor Dicyt</div><div class="rs">Cargo Proyecto de Acción · Veo todas las notas</div></div>
     </button>
     <button class="role-btn" onclick="go('s-login','directivo')">
-      <div class="role-icon">🏫</div>
+      <div class="role-icon" style="background:var(--azul-claro)">🏫</div>
       <div class="role-text"><div class="rt">Directivo/a</div><div class="rs">Accedo a informes generales del CENS</div></div>
     </button>
   </div>
@@ -877,7 +878,7 @@ tr:hover td{background:#fafaf8}
     <div class="section-label">Alumnos/as</div>
     <div class="tabla-wrap">
       <table>
-        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Archivo PPAT</th></tr></thead>
+        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Teléfono de contacto</th><th>Archivo PPAT</th></tr></thead>
         <tbody id="dicyt-sit-tbody"></tbody>
       </table>
     </div>
@@ -3465,6 +3466,18 @@ async function cargarSituaciones(force=false){
 }
 
 // ---- Pantalla Dicyt: marcar situaciones ----
+// Convierte un teléfono cargado en cualquier formato común de Argentina a
+// número de WhatsApp (54 9 + área + número, sin 0 ni 15).
+function formatWhatsapp(raw){
+  let n=(raw||'').replace(/\D/g,'');
+  if(!n) return '';
+  n=n.replace(/^0/,'');           // saca el 0 de "011..."
+  n=n.replace(/^(\d{2,4})15/,'$1'); // saca el "15" de celular viejo
+  if(!n.startsWith('54')) n='54'+n;
+  if(!n.startsWith('549')) n=n.replace(/^54/,'549');
+  return n;
+}
+
 async function setupDicytSituaciones(){
   poblaCursoSel('dicyt-sit-curso', true);
   await cargarSituacionesDicyt();
@@ -3472,24 +3485,26 @@ async function setupDicytSituaciones(){
 async function cargarSituacionesDicyt(){
   const cid=document.getElementById('dicyt-sit-curso').value;
   const tbody=document.getElementById('dicyt-sit-tbody');
-  tbody.innerHTML='<tr><td colspan="5" style="text-align:center;font-style:italic">Cargando…</td></tr>';
+  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;font-style:italic">Cargando…</td></tr>';
   await cargarSituaciones(true);
   const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
     .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
   if(!alumnos.length){
-    tbody.innerHTML='<tr><td colspan="5" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
+    tbody.innerHTML='<tr><td colspan="6" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
     return;
   }
 
   tbody.innerHTML=alumnos.map(a=>{
     const s=situacionesCache[a.id]||{};
     const obs=(s.observaciones||'').replace(/"/g,'&quot;');
+    const tel=(s.telefono_contacto||'').replace(/"/g,'&quot;');
     return `<tr>
       <td class="td-nombre">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3)">${cursoNombre(a.curso)}</div>`}</td>
       <td style="text-align:center"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}></td>
       <td style="text-align:center"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}></td>
       <td><input type="text" class="nota-num" style="width:100%;text-align:left" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></td>
+      <td><input type="tel" class="nota-num" style="width:100%;text-align:left" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}"></td>
       <td style="min-width:140px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
     </tr>`;
   }).join('');
@@ -3520,8 +3535,9 @@ async function subirArchivoPpatDicyt(alumnoId){
   celda.innerHTML='<span style="font-size:11px;color:var(--texto3)">Subiendo…</span>';
   try {
     const archivoBase64=await leerArchivoBase64(file);
+    const cid=cursoDeAlumno(alumnoId);
     await api('subirArchivoPpat',{
-      ciclo:cicloActual, alumnoId, cursoId:cursoDeAlumno(alumnoId),
+      ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
       archivoBase64, nombreArchivo:file.name, mimeType:file.type,
       actualizadoPor:sesion.nombre,
     });
@@ -3557,12 +3573,16 @@ async function guardarSituacionesDicyt(){
     const aid=chk.dataset.id;
     const prisionChk=document.querySelector(`#dicyt-sit-tbody input[data-tipo="prision"][data-id="${aid}"]`);
     const obsInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="obs"][data-id="${aid}"]`);
+    const telInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="tel"][data-id="${aid}"]`);
+    const cid=cursoDeAlumno(aid);
     return {
       alumnoId: aid,
-      cursoId: cursoDeAlumno(aid),
+      cursoId: cid,
+      cursoNombre: cursoNombre(cid),
       ppat: chk.checked,
       prisionDomiciliaria: prisionChk?prisionChk.checked:false,
       observaciones: obsInp?obsInp.value.trim():'',
+      telefonoContacto: telInp?telInp.value.trim():'',
     };
   });
   try {
@@ -3604,14 +3624,18 @@ async function mostrarSituacionesInforme(){
   el.innerHTML=`<div class="card">
     <div class="section-label">${lista.length} alumno(s) · ${cid?cursoNombre(cid):'Todos los cursos'}${tipo?' · '+(tipo==='ppat'?'PPAT':'Prisión domiciliaria'):''}</div>
     <div class="tabla-wrap"><table>
-      <thead><tr><th>Apellido y Nombre</th><th>Curso</th><th>Situación</th><th>Observaciones</th><th class="no-print">Archivo PPAT</th></tr></thead>
-      <tbody>${lista.map(s=>`<tr>
+      <thead><tr><th>Apellido y Nombre</th><th>Curso</th><th>Situación</th><th>Observaciones</th><th class="no-print">Archivo PPAT</th><th class="no-print">Contacto</th></tr></thead>
+      <tbody>${lista.map(s=>{
+        const wa=s.ppat && s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
+        const waMsg=encodeURIComponent(`Hola, nos comunicamos del CENS Nº 451 por la situación de ${s.nombre}.`);
+        return `<tr>
         <td class="td-nombre">${s.nombre}</td>
         <td>${s.cursoNom}</td>
         <td>${[s.ppat?'<span class="badge badge-curso">PPAT</span>':'',s.prision_domiciliaria?'<span class="badge badge-ted">Prisión domic.</span>':''].filter(Boolean).join(' ')}</td>
         <td style="font-size:12px">${s.observaciones||'—'}</td>
         <td class="no-print">${s.ppat_archivo_url?`<a href="${s.ppat_archivo_url}" target="_blank" style="font-size:11px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver / descargar'}</a>`:'<span style="font-size:11px;color:var(--texto3)">—</span>'}</td>
-      </tr>`).join('')}</tbody>
+        <td class="no-print">${wa?`<a href="https://wa.me/${wa}?text=${waMsg}" target="_blank" style="font-size:11px;text-decoration:none;color:#1a8a4a;font-weight:600">💬 WhatsApp</a>`:'<span style="font-size:11px;color:var(--texto3)">—</span>'}</td>
+      </tr>`;}).join('')}</tbody>
     </table></div>
   </div>`;
 }
