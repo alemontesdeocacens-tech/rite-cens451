@@ -3520,9 +3520,19 @@ function archivoPpatCellHTML(alumnoId, s){
     </div>`;
   }
   return `<div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
-    <input type="file" id="ppat-file-${alumnoId}" style="font-size:10px;width:100%">
-    <button class="btn btn-secondary btn-sm" style="padding:4px 8px;font-size:11px;width:100%" onclick="subirArchivoPpatDicyt('${alumnoId}')">📎 Subir</button>
+    <label for="ppat-file-${alumnoId}" class="btn btn-secondary btn-sm" style="text-align:center;cursor:pointer;padding:4px 8px;font-size:11px;width:100%">📎 Elegir archivo</label>
+    <input type="file" id="ppat-file-${alumnoId}" style="display:none" onchange="mostrarNombreArchivoPpat('${alumnoId}')">
+    <div id="ppat-file-name-${alumnoId}" style="font-size:10px;color:var(--texto3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin archivo elegido</div>
+    <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:11px;width:100%" onclick="subirArchivoPpatDicyt('${alumnoId}')">Subir</button>
   </div>`;
+}
+function mostrarNombreArchivoPpat(alumnoId){
+  const input=document.getElementById('ppat-file-'+alumnoId);
+  const label=document.getElementById('ppat-file-name-'+alumnoId);
+  if(!input||!label) return;
+  const file=input.files[0];
+  label.textContent=file?file.name:'Sin archivo elegido';
+  label.title=file?file.name:'';
 }
 
 async function subirArchivoPpatDicyt(alumnoId){
