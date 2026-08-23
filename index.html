@@ -15,7 +15,7 @@
   --terracota:#d97a4d;--terracota-claro:#fbece2;
   --rojo:#c0392b;--rojo-claro:#fdf0ee;
   --azul:#3a6ea5;--azul-claro:#eef3fa;
-  --gris:#faf6ef;--borde:#e9decb;
+  --gris:#f6ecdc;--borde:#e6d7bc;
   --texto:#241f19;--texto2:#635b4d;--texto3:#a39a87;
   --blanco:#ffffff;
   --radius:12px;--radius-lg:20px;
@@ -23,6 +23,7 @@
   --shadow-lg:0 10px 32px rgba(90,60,20,.14);
 }
 body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);font-size:14px;min-height:100vh}
+input[type=checkbox],input[type=radio]{accent-color:var(--verde);width:16px;height:16px;cursor:pointer}
 .app{max-width:720px;margin:0 auto;padding:12px 10px 80px}
 
 /* ===== HEADER ===== */
@@ -46,7 +47,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 .inicio-hero-ciclo span{font-family:'JetBrains Mono',monospace;font-size:14px;font-weight:600}
 
 /* ===== CARDS ===== */
-.card{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
+.card{background:var(--blanco);border:1px solid var(--borde);border-left:4px solid var(--verde-mid);border-radius:var(--radius-lg);padding:18px;margin-bottom:12px;box-shadow:var(--shadow)}
 .card-title{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:14px}
 
 /* ===== ROLE BUTTONS ===== */
@@ -78,7 +79,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 /* ===== BOTONES ===== */
 .btn{padding:10px 20px;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s}
 .btn:active{transform:scale(.98)}
-.btn-primary{background:var(--verde);color:white;width:100%;padding:13px}
+.btn-primary{background:linear-gradient(135deg,var(--verde) 0%,var(--verde-mid) 100%);color:white;width:100%;padding:13px}
 .btn-primary:hover{background:var(--verde-mid);box-shadow:0 4px 16px rgba(47,125,85,.35)}
 .btn-secondary{background:var(--gris);border:1.5px solid var(--borde);color:var(--texto)}
 .btn-secondary:hover{background:var(--borde)}
@@ -89,7 +90,7 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 
 /* ===== NAV ===== */
 .nav{display:flex;align-items:center;gap:10px;margin-bottom:16px}
-.back-btn{background:var(--blanco);border:1.5px solid var(--borde);border-radius:8px;padding:7px 13px;cursor:pointer;font-size:16px;color:var(--texto2);box-shadow:var(--shadow)}
+.back-btn{background:var(--terracota-claro);border:1.5px solid var(--terracota);border-radius:10px;padding:7px 13px;cursor:pointer;font-size:16px;color:#a8501f;box-shadow:var(--shadow)}
 .back-btn:hover{background:var(--gris)}
 .nav-info .nt{font-size:15px;font-weight:600}
 .nav-info .ns{font-size:12px;color:var(--texto2)}
@@ -120,8 +121,8 @@ body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);fon
 /* ===== TABLA ===== */
 .tabla-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--borde)}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead tr{background:var(--gris)}
-th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--texto2);border-bottom:1px solid var(--borde);white-space:nowrap}
+thead tr{background:var(--amarillo-claro)}
+th{padding:8px 10px;text-align:left;font-size:11px;font-weight:600;color:var(--texto2);border-bottom:2px solid var(--amarillo);white-space:nowrap}
 td{padding:8px 10px;border-bottom:1px solid var(--borde);color:var(--texto);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#fafaf8}
@@ -134,13 +135,13 @@ tr:hover td{background:#fafaf8}
 
 /* ===== BADGES ===== */
 .badge{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
-.badge-tel{background:#e8f5ee;color:#1a5c3a}
-.badge-tep{background:#fff3e0;color:#e65100}
-.badge-ted{background:#fdf0ee;color:#c0392b}
-.badge-apr{background:#e8f5ee;color:#1a5c3a}
-.badge-pen{background:#fdf0ee;color:#c0392b}
-.badge-sin{background:#f0f0ee;color:#5a5a55}
-.badge-curso{background:#e3f0fb;color:#1565c0}
+.badge-tel{background:var(--verde-claro);color:var(--verde-dark)}
+.badge-tep{background:var(--terracota-claro);color:#a8501f}
+.badge-ted{background:var(--rojo-claro);color:var(--rojo)}
+.badge-apr{background:var(--verde-claro);color:var(--verde-dark)}
+.badge-pen{background:var(--rojo-claro);color:var(--rojo)}
+.badge-sin{background:#f1e9d9;color:var(--texto2)}
+.badge-curso{background:var(--azul-claro);color:var(--azul)}
 
 /* ===== INFO BOXES ===== */
 .info-box{background:var(--azul-claro);border:1px solid #b8d4f0;border-radius:var(--radius);padding:10px 14px;font-size:12px;color:var(--azul);margin-bottom:12px;display:flex;gap:8px;align-items:flex-start}
@@ -190,7 +191,7 @@ tr:hover td{background:#fafaf8}
 .empty{text-align:center;padding:30px;color:var(--texto3);font-size:13px}
 .error-msg{color:var(--rojo);font-size:12px;margin-top:5px}
 .divider{height:1px;background:var(--borde);margin:14px 0}
-.section-label{font-size:11px;font-weight:600;color:var(--texto2);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
+.section-label{font-size:11px;font-weight:700;color:var(--terracota);text-transform:uppercase;letter-spacing:.6px;margin-bottom:8px}
 
 /* ===== TOAST ===== */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--verde-dark);color:white;padding:11px 22px;border-radius:12px;font-size:13px;z-index:9999;box-shadow:0 6px 24px rgba(0,0,0,.25);white-space:nowrap;animation:toast-in .2s ease}
@@ -878,7 +879,7 @@ tr:hover td{background:#fafaf8}
     <div class="section-label">Alumnos/as</div>
     <div class="tabla-wrap">
       <table>
-        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Teléfono de contacto</th><th>Archivo PPAT</th></tr></thead>
+        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Teléfono de contacto</th><th>WhatsApp</th><th>Archivo PPAT</th></tr></thead>
         <tbody id="dicyt-sit-tbody"></tbody>
       </table>
     </div>
@@ -3485,13 +3486,13 @@ async function setupDicytSituaciones(){
 async function cargarSituacionesDicyt(){
   const cid=document.getElementById('dicyt-sit-curso').value;
   const tbody=document.getElementById('dicyt-sit-tbody');
-  tbody.innerHTML='<tr><td colspan="6" style="text-align:center;font-style:italic">Cargando…</td></tr>';
+  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;font-style:italic">Cargando…</td></tr>';
   await cargarSituaciones(true);
   const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
     .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
   if(!alumnos.length){
-    tbody.innerHTML='<tr><td colspan="6" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
+    tbody.innerHTML='<tr><td colspan="7" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
     return;
   }
 
@@ -3504,10 +3505,25 @@ async function cargarSituacionesDicyt(){
       <td style="text-align:center"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}></td>
       <td style="text-align:center"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}></td>
       <td><input type="text" class="nota-num" style="width:100%;text-align:left" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></td>
-      <td><input type="tel" class="nota-num" style="width:100%;text-align:left" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}"></td>
+      <td><input type="tel" class="nota-num" style="width:100%;text-align:left" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></td>
+      <td style="text-align:center" id="dicyt-sit-wa-${a.id}">${waButtonHTML(tel)}</td>
       <td style="min-width:130px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
     </tr>`;
   }).join('');
+}
+
+// Botón/ícono de WhatsApp: aparece para cualquier alumno con teléfono
+// cargado, tenga o no una situación especial marcada.
+function waButtonHTML(telRaw){
+  const num=formatWhatsapp(telRaw);
+  if(!num) return '<span style="font-size:11px;color:var(--texto3)">—</span>';
+  return `<a href="https://wa.me/${num}" target="_blank" style="font-size:18px;text-decoration:none" title="Abrir WhatsApp">💬</a>`;
+}
+function actualizarWhatsappDicyt(alumnoId){
+  const telInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="tel"][data-id="${alumnoId}"]`);
+  const cell=document.getElementById('dicyt-sit-wa-'+alumnoId);
+  if(!telInp||!cell) return;
+  cell.innerHTML=waButtonHTML(telInp.value);
 }
 
 // Genera el contenido de la celda "Archivo PPAT": link + borrar si ya hay uno
@@ -3636,7 +3652,7 @@ async function mostrarSituacionesInforme(){
     <div class="tabla-wrap"><table>
       <thead><tr><th>Apellido y Nombre</th><th>Curso</th><th>Situación</th><th>Observaciones</th><th class="no-print">Archivo PPAT</th><th class="no-print">Contacto</th></tr></thead>
       <tbody>${lista.map(s=>{
-        const wa=s.ppat && s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
+        const wa=s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
         const waMsg=encodeURIComponent(`Hola, nos comunicamos del CENS Nº 451 por la situación de ${s.nombre}.`);
         return `<tr>
         <td class="td-nombre">${s.nombre}</td>
