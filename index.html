@@ -877,12 +877,7 @@ tr:hover td{background:#fafaf8}
   </div>
   <div class="card">
     <div class="section-label">Alumnos/as</div>
-    <div class="tabla-wrap">
-      <table>
-        <thead><tr><th>Alumno/a</th><th>PPAT</th><th>Prisión domiciliaria</th><th>Observaciones</th><th>Teléfono de contacto</th><th>WhatsApp</th><th>Archivo PPAT</th></tr></thead>
-        <tbody id="dicyt-sit-tbody"></tbody>
-      </table>
-    </div>
+    <div id="dicyt-sit-lista"></div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="guardarSituacionesDicyt()">💾 Guardar situaciones</button>
   </div>
 </div>
@@ -3485,30 +3480,34 @@ async function setupDicytSituaciones(){
 }
 async function cargarSituacionesDicyt(){
   const cid=document.getElementById('dicyt-sit-curso').value;
-  const tbody=document.getElementById('dicyt-sit-tbody');
-  tbody.innerHTML='<tr><td colspan="7" style="text-align:center;font-style:italic">Cargando…</td></tr>';
+  const lista=document.getElementById('dicyt-sit-lista');
+  lista.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
   await cargarSituaciones(true);
   const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
     .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
   if(!alumnos.length){
-    tbody.innerHTML='<tr><td colspan="7" style="text-align:center" class="empty">Sin alumnos/as para mostrar</td></tr>';
+    lista.innerHTML='<div class="empty">Sin alumnos/as para mostrar</div>';
     return;
   }
 
-  tbody.innerHTML=alumnos.map(a=>{
+  lista.innerHTML=alumnos.map(a=>{
     const s=situacionesCache[a.id]||{};
     const obs=(s.observaciones||'').replace(/"/g,'&quot;');
     const tel=(s.telefono_contacto||'').replace(/"/g,'&quot;');
-    return `<tr>
-      <td class="td-nombre">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3)">${cursoNombre(a.curso)}</div>`}</td>
-      <td style="text-align:center"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}></td>
-      <td style="text-align:center"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}></td>
-      <td><input type="text" class="nota-num" style="width:100%;text-align:left" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></td>
-      <td><input type="tel" class="nota-num" style="width:100%;text-align:left" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></td>
-      <td style="text-align:center" id="dicyt-sit-wa-${a.id}">${waButtonHTML(tel)}</td>
-      <td style="min-width:130px" id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</td>
-    </tr>`;
+    return `<div class="situ-card" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <div class="td-nombre" style="font-weight:600">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3);font-weight:400">${cursoNombre(a.curso)}</div>`}</div>
+        <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(tel)}</div>
+      </div>
+      <div style="display:flex;gap:18px;margin-bottom:10px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}> PPAT</label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}> Prisión domiciliaria</label>
+      </div>
+      <div class="field" style="margin-bottom:8px"><label>Observaciones</label><input type="text" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></div>
+      <div class="field" style="margin-bottom:8px"><label>Teléfono de contacto</label><input type="tel" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></div>
+      <div class="field"><label>Archivo PPAT</label><div id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</div></div>
+    </div>`;
   }).join('');
 }
 
@@ -3516,30 +3515,30 @@ async function cargarSituacionesDicyt(){
 // cargado, tenga o no una situación especial marcada.
 function waButtonHTML(telRaw){
   const num=formatWhatsapp(telRaw);
-  if(!num) return '<span style="font-size:11px;color:var(--texto3)">—</span>';
-  return `<a href="https://wa.me/${num}" target="_blank" style="font-size:18px;text-decoration:none" title="Abrir WhatsApp">💬</a>`;
+  if(!num) return '<span style="font-size:11px;color:var(--texto3)">Sin WhatsApp</span>';
+  return `<a href="https://wa.me/${num}" target="_blank" style="font-size:13px;text-decoration:none;color:#1a8a4a;font-weight:600;display:flex;align-items:center;gap:4px">💬 WhatsApp</a>`;
 }
 function actualizarWhatsappDicyt(alumnoId){
-  const telInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="tel"][data-id="${alumnoId}"]`);
+  const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
   const cell=document.getElementById('dicyt-sit-wa-'+alumnoId);
   if(!telInp||!cell) return;
   cell.innerHTML=waButtonHTML(telInp.value);
 }
 
-// Genera el contenido de la celda "Archivo PPAT": link + borrar si ya hay uno
+// Genera el contenido del bloque "Archivo PPAT": link + borrar si ya hay uno
 // cargado, o un input de archivo + botón "Subir" si todavía no.
 function archivoPpatCellHTML(alumnoId, s){
   if(s && s.ppat_archivo_url){
-    return `<div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-      <a href="${s.ppat_archivo_url}" target="_blank" style="font-size:11px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver archivo'}</a>
-      <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:13px" onclick="eliminarArchivoPpatDicyt('${alumnoId}')">×</span>
+    return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <a href="${s.ppat_archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver archivo'}</a>
+      <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:14px" onclick="eliminarArchivoPpatDicyt('${alumnoId}')">×</span>
     </div>`;
   }
-  return `<div style="display:flex;flex-direction:column;gap:5px;min-width:120px">
-    <label for="ppat-file-${alumnoId}" class="btn btn-secondary btn-sm" style="text-align:center;cursor:pointer;padding:4px 8px;font-size:11px;width:100%">📎 Elegir archivo</label>
+  return `<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+    <label for="ppat-file-${alumnoId}" class="btn btn-secondary btn-sm" style="cursor:pointer">📎 Elegir archivo</label>
     <input type="file" id="ppat-file-${alumnoId}" style="display:none" onchange="mostrarNombreArchivoPpat('${alumnoId}')">
-    <div id="ppat-file-name-${alumnoId}" style="font-size:10px;color:var(--texto3);text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin archivo elegido</div>
-    <button class="btn btn-primary btn-sm" style="padding:4px 8px;font-size:11px;width:100%" onclick="subirArchivoPpatDicyt('${alumnoId}')">Subir</button>
+    <span id="ppat-file-name-${alumnoId}" style="font-size:11px;color:var(--texto3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin archivo elegido</span>
+    <button class="btn btn-primary btn-sm" onclick="subirArchivoPpatDicyt('${alumnoId}')">Subir</button>
   </div>`;
 }
 function mostrarNombreArchivoPpat(alumnoId){
@@ -3569,7 +3568,7 @@ async function subirArchivoPpatDicyt(alumnoId){
     });
     toast('Archivo de PPAT subido ✓');
     // También tildamos el checkbox de PPAT en pantalla, ya que subirArchivoPpat lo marca en el sheet.
-    const chk=document.querySelector(`#dicyt-sit-tbody input[data-tipo="ppat"][data-id="${alumnoId}"]`);
+    const chk=document.querySelector(`#dicyt-sit-lista input[data-tipo="ppat"][data-id="${alumnoId}"]`);
     if(chk) chk.checked=true;
     await cargarSituaciones(true);
     celda.innerHTML=archivoPpatCellHTML(alumnoId, situacionesCache[alumnoId]);
@@ -3593,13 +3592,13 @@ async function eliminarArchivoPpatDicyt(alumnoId){
 }
 
 async function guardarSituacionesDicyt(){
-  const filas=document.querySelectorAll('#dicyt-sit-tbody input[data-tipo="ppat"]');
+  const filas=document.querySelectorAll('#dicyt-sit-lista input[data-tipo="ppat"]');
   if(!filas.length) return;
   const datos=[...filas].map(chk=>{
     const aid=chk.dataset.id;
-    const prisionChk=document.querySelector(`#dicyt-sit-tbody input[data-tipo="prision"][data-id="${aid}"]`);
-    const obsInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="obs"][data-id="${aid}"]`);
-    const telInp=document.querySelector(`#dicyt-sit-tbody input[data-tipo="tel"][data-id="${aid}"]`);
+    const prisionChk=document.querySelector(`#dicyt-sit-lista input[data-tipo="prision"][data-id="${aid}"]`);
+    const obsInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="obs"][data-id="${aid}"]`);
+    const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${aid}"]`);
     const cid=cursoDeAlumno(aid);
     return {
       alumnoId: aid,
