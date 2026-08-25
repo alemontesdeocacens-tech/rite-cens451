@@ -3461,6 +3461,98 @@ async function cargarSituaciones(force=false){
   }
 }
 
+// =====================================================================
+// INFORMES DE SEGUIMIENTO — legajo del alumno, junto al PPAT.
+// Cache en memoria: alumno_id -> [{id,titulo,archivo_url,archivo_nombre,fecha,cargado_por}, ...]
+// =====================================================================
+let seguimientosCache = {};
+let seguimientosCargados = false;
+
+async function cargarSeguimientos(force=false){
+  if(seguimientosCargados && !force) return;
+  try {
+    const rows = await api('getSeguimientos',{ciclo:cicloActual});
+    seguimientosCache = {};
+    (rows||[]).forEach(r=>{
+      if(!seguimientosCache[r.alumno_id]) seguimientosCache[r.alumno_id]=[];
+      seguimientosCache[r.alumno_id].push(r);
+    });
+    seguimientosCargados = true;
+  } catch(e){
+    console.warn('No se pudieron cargar los informes de seguimiento:', e);
+  }
+}
+function fechaCorta(iso){
+  if(!iso) return '';
+  const d=new Date(iso);
+  if(isNaN(d)) return '';
+  return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+}
+function seguimientosListHTML(alumnoId){
+  const items=seguimientosCache[alumnoId]||[];
+  const lista=items.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--borde)">
+    <a href="${s.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${s.titulo?s.titulo+' — ':''}${s.archivo_nombre} <span style="color:var(--texto3)">(${fechaCorta(s.fecha)})</span></a>
+    <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:14px;flex-shrink:0" onclick="eliminarSeguimientoDicyt('${s.id}','${alumnoId}')">×</span>
+  </div>`).join('');
+  return `<div id="dicyt-sit-seg-lista-${alumnoId}">${lista}</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
+      <input type="text" id="seg-titulo-${alumnoId}" placeholder="Título (opcional, ej: Seguimiento agosto)" style="font-size:12px">
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <label for="seg-file-${alumnoId}" class="btn btn-secondary btn-sm" style="cursor:pointer">📎 Elegir archivo</label>
+        <input type="file" id="seg-file-${alumnoId}" style="display:none" onchange="mostrarNombreArchivoSeg('${alumnoId}')">
+        <span id="seg-file-name-${alumnoId}" style="font-size:11px;color:var(--texto3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin archivo elegido</span>
+        <button class="btn btn-primary btn-sm" onclick="subirSeguimientoDicyt('${alumnoId}')">Agregar informe</button>
+      </div>
+    </div>`;
+}
+function mostrarNombreArchivoSeg(alumnoId){
+  const input=document.getElementById('seg-file-'+alumnoId);
+  const label=document.getElementById('seg-file-name-'+alumnoId);
+  if(!input||!label) return;
+  const file=input.files[0];
+  label.textContent=file?file.name:'Sin archivo elegido';
+  label.title=file?file.name:'';
+}
+async function subirSeguimientoDicyt(alumnoId){
+  const input=document.getElementById('seg-file-'+alumnoId);
+  let file=input && input.files[0];
+  if(!file){ toast('Elegí un archivo primero','err'); return; }
+  const tituloInp=document.getElementById('seg-titulo-'+alumnoId);
+  const titulo=tituloInp?tituloInp.value.trim():'';
+
+  const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
+  cont.innerHTML='<span style="font-size:11px;color:var(--texto3)">Subiendo…</span>';
+  try {
+    file=await comprimirImagenSiCorresponde(file);
+    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
+    const archivoBase64=await leerArchivoBase64(file);
+    const cid=cursoDeAlumno(alumnoId);
+    await api('subirSeguimiento',{
+      ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
+      titulo, archivoBase64, nombreArchivo:file.name, mimeType:file.type,
+      actualizadoPor:sesion.nombre,
+    });
+    toast('Informe de seguimiento agregado ✓');
+    await cargarSeguimientos(true);
+    cont.innerHTML=seguimientosListHTML(alumnoId);
+  } catch(e){
+    toast('No se pudo subir: '+e.message,'err');
+    cont.innerHTML=seguimientosListHTML(alumnoId);
+  }
+}
+async function eliminarSeguimientoDicyt(id, alumnoId){
+  if(!confirm('¿Borrar este informe de seguimiento?')) return;
+  try {
+    await api('eliminarSeguimiento',{id});
+    toast('Informe borrado ✓');
+    await cargarSeguimientos(true);
+    const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
+    if(cont) cont.innerHTML=seguimientosListHTML(alumnoId);
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
 // ---- Pantalla Dicyt: marcar situaciones ----
 // Convierte un teléfono cargado en cualquier formato común de Argentina a
 // número de WhatsApp (54 9 + área + número, sin 0 ni 15).
@@ -3482,7 +3574,7 @@ async function cargarSituacionesDicyt(){
   const cid=document.getElementById('dicyt-sit-curso').value;
   const lista=document.getElementById('dicyt-sit-lista');
   lista.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
-  await cargarSituaciones(true);
+  await Promise.all([cargarSituaciones(true), cargarSeguimientos(true)]);
   const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
     .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
@@ -3505,8 +3597,12 @@ async function cargarSituacionesDicyt(){
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="prision" data-id="${a.id}" ${s.prision_domiciliaria?'checked':''}> Prisión domiciliaria</label>
       </div>
       <div class="field" style="margin-bottom:8px"><label>Observaciones</label><input type="text" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></div>
-      <div class="field" style="margin-bottom:8px"><label>Teléfono de contacto</label><input type="tel" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></div>
-      <div class="field"><label>Archivo PPAT</label><div id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</div></div>
+      <div class="field" style="margin-bottom:10px"><label>Teléfono de contacto</label><input type="tel" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></div>
+      <div style="border-top:1px dashed var(--borde);padding-top:10px">
+        <div class="section-label" style="margin-bottom:6px">📁 Legajo</div>
+        <div class="field" style="margin-bottom:10px"><label>Archivo PPAT</label><div id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</div></div>
+        <div class="field"><label>Informes de seguimiento</label><div id="dicyt-sit-seg-${a.id}">${seguimientosListHTML(a.id)}</div></div>
+      </div>
     </div>`;
   }).join('');
 }
@@ -3552,13 +3648,14 @@ function mostrarNombreArchivoPpat(alumnoId){
 
 async function subirArchivoPpatDicyt(alumnoId){
   const input=document.getElementById('ppat-file-'+alumnoId);
-  const file=input && input.files[0];
+  let file=input && input.files[0];
   if(!file){ toast('Elegí un archivo primero','err'); return; }
-  if(file.size>MATERIAL_MAX_BYTES){ toast('El archivo supera los 8 MB','err'); return; }
 
   const celda=document.getElementById('dicyt-sit-archivo-'+alumnoId);
   celda.innerHTML='<span style="font-size:11px;color:var(--texto3)">Subiendo…</span>';
   try {
+    file=await comprimirImagenSiCorresponde(file);
+    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
     const archivoBase64=await leerArchivoBase64(file);
     const cid=cursoDeAlumno(alumnoId);
     await api('subirArchivoPpat',{
@@ -3629,7 +3726,7 @@ async function mostrarSituacionesInforme(){
   const tipo=document.getElementById('sit-inf-tipo').value;
   const el=document.getElementById('sit-inf-content');
   el.innerHTML='<div class="loading"><div class="spinner"></div>Cargando informe…</div>';
-  await cargarSituaciones(true);
+  await Promise.all([cargarSituaciones(true), cargarSeguimientos(true)]);
 
   const cursosPermitidos=new Set(cursosVisibles().map(c=>c.id));
   let lista=Object.values(situacionesCache).filter(s=>{
@@ -3646,23 +3743,30 @@ async function mostrarSituacionesInforme(){
     return;
   }
 
-  el.innerHTML=`<div class="card">
-    <div class="section-label">${lista.length} alumno(s) · ${cid?cursoNombre(cid):'Todos los cursos'}${tipo?' · '+(tipo==='ppat'?'PPAT':'Prisión domiciliaria'):''}</div>
-    <div class="tabla-wrap"><table>
-      <thead><tr><th>Apellido y Nombre</th><th>Curso</th><th>Situación</th><th>Observaciones</th><th class="no-print">Archivo PPAT</th><th class="no-print">Contacto</th></tr></thead>
-      <tbody>${lista.map(s=>{
-        const wa=s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
-        const waMsg=encodeURIComponent(`Hola, nos comunicamos del CENS Nº 451 por la situación de ${s.nombre}.`);
-        return `<tr>
-        <td class="td-nombre">${s.nombre}</td>
-        <td>${s.cursoNom}</td>
-        <td>${[s.ppat?'<span class="badge badge-curso">PPAT</span>':'',s.prision_domiciliaria?'<span class="badge badge-ted">Prisión domic.</span>':''].filter(Boolean).join(' ')}</td>
-        <td style="font-size:12px">${s.observaciones||'—'}</td>
-        <td class="no-print">${s.ppat_archivo_url?`<a href="${s.ppat_archivo_url}" target="_blank" style="font-size:11px;text-decoration:none;color:var(--azul)">📎 ${s.ppat_archivo_nombre||'Ver / descargar'}</a>`:'<span style="font-size:11px;color:var(--texto3)">—</span>'}</td>
-        <td class="no-print">${wa?`<a href="https://wa.me/${wa}?text=${waMsg}" target="_blank" style="font-size:11px;text-decoration:none;color:#1a8a4a;font-weight:600">💬 WhatsApp</a>`:'<span style="font-size:11px;color:var(--texto3)">—</span>'}</td>
-      </tr>`;}).join('')}</tbody>
-    </table></div>
-  </div>`;
+  el.innerHTML=`<div class="section-label" style="margin:0 4px 10px">${lista.length} alumno(s) · ${cid?cursoNombre(cid):'Todos los cursos'}${tipo?' · '+(tipo==='ppat'?'PPAT':'Prisión domiciliaria'):''}</div>
+    ${lista.map(s=>{
+      const wa=s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
+      const waMsg=encodeURIComponent(`Hola, nos comunicamos del CENS Nº 451 por la situación de ${s.nombre}.`);
+      const segs=seguimientosCache[s.alumno_id]||[];
+      const legajoItems=[
+        s.ppat_archivo_url?`<div style="padding:4px 0"><a href="${s.ppat_archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul)">📎 PPAT — ${s.ppat_archivo_nombre||'Ver / descargar'}</a></div>`:'',
+        ...segs.map(sg=>`<div style="padding:4px 0"><a href="${sg.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul)">📄 ${sg.titulo?sg.titulo+' — ':''}${sg.archivo_nombre} <span style="color:var(--texto3)">(${fechaCorta(sg.fecha)})</span></a></div>`),
+      ].filter(Boolean).join('');
+      return `<div class="card" style="padding:14px">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
+          <div>
+            <div style="font-weight:600">${s.nombre}</div>
+            <div style="font-size:11px;color:var(--texto3)">${s.cursoNom}</div>
+          </div>
+          ${wa?`<a href="https://wa.me/${wa}?text=${waMsg}" target="_blank" class="no-print" style="font-size:12px;text-decoration:none;color:#1a8a4a;font-weight:600;white-space:nowrap">💬 WhatsApp</a>`:''}
+        </div>
+        <div style="margin-bottom:8px">${[s.ppat?'<span class="badge badge-curso">PPAT</span>':'',s.prision_domiciliaria?'<span class="badge badge-ted">Prisión domic.</span>':''].filter(Boolean).join(' ')}</div>
+        ${s.observaciones?`<div style="font-size:12px;color:var(--texto2);margin-bottom:8px">${s.observaciones}</div>`:''}
+        <div style="border-top:1px dashed var(--borde);padding-top:8px">
+          <div class="section-label" style="margin-bottom:2px">📁 Legajo</div>
+          ${legajoItems || '<div style="font-size:12px;color:var(--texto3)">Sin documentos cargados</div>'}
+        </div>
+      </div>`;}).join('')}`;
 }
 
 // =====================================================================
