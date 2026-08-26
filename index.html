@@ -3462,11 +3462,15 @@ async function cargarSituaciones(force=false){
 }
 
 // =====================================================================
-// INFORMES DE SEGUIMIENTO — legajo del alumno, junto al PPAT.
-// Cache en memoria: alumno_id -> [{id,titulo,archivo_url,archivo_nombre,fecha,cargado_por}, ...]
+// INFORMES DE SITUACIÓN — legajo del alumno, junto al PPAT. Se puede
+// escribir texto libre (se autoguarda mientras se tipea y queda como Google
+// Doc en el legajo de Drive), adjuntar un archivo, o ambas cosas.
+// Cache en memoria: alumno_id -> [{id,titulo,contenido,archivo_url,archivo_nombre,doc_url,fecha,cargado_por}, ...]
 // =====================================================================
 let seguimientosCache = {};
 let seguimientosCargados = false;
+let seguimientoBorradorId = {}; // alumnoId -> id del informe que se está escribiendo ahora mismo
+let seguimientoDebounce = {};   // alumnoId -> timeout del autoguardado
 
 async function cargarSeguimientos(force=false){
   if(seguimientosCargados && !force) return;
@@ -3479,7 +3483,7 @@ async function cargarSeguimientos(force=false){
     });
     seguimientosCargados = true;
   } catch(e){
-    console.warn('No se pudieron cargar los informes de seguimiento:', e);
+    console.warn('No se pudieron cargar los informes de situación:', e);
   }
 }
 function fechaCorta(iso){
@@ -3488,22 +3492,48 @@ function fechaCorta(iso){
   if(isNaN(d)) return '';
   return d.toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
 }
+
+// Lista de informes ya guardados + botón para escribir uno nuevo.
 function seguimientosListHTML(alumnoId){
   const items=seguimientosCache[alumnoId]||[];
-  const lista=items.map(s=>`<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:5px 0;border-bottom:1px solid var(--borde)">
-    <a href="${s.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">📄 ${s.titulo?s.titulo+' — ':''}${s.archivo_nombre} <span style="color:var(--texto3)">(${fechaCorta(s.fecha)})</span></a>
-    <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:14px;flex-shrink:0" onclick="eliminarSeguimientoDicyt('${s.id}','${alumnoId}')">×</span>
-  </div>`).join('');
-  return `<div id="dicyt-sit-seg-lista-${alumnoId}">${lista}</div>
-    <div style="display:flex;flex-direction:column;gap:6px;margin-top:8px">
-      <input type="text" id="seg-titulo-${alumnoId}" placeholder="Título (opcional, ej: Seguimiento agosto)" style="font-size:12px">
-      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <label for="seg-file-${alumnoId}" class="btn btn-secondary btn-sm" style="cursor:pointer">📎 Elegir archivo</label>
-        <input type="file" id="seg-file-${alumnoId}" style="display:none" onchange="mostrarNombreArchivoSeg('${alumnoId}')">
-        <span id="seg-file-name-${alumnoId}" style="font-size:11px;color:var(--texto3);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">Sin archivo elegido</span>
-        <button class="btn btn-primary btn-sm" onclick="subirSeguimientoDicyt('${alumnoId}')">Agregar informe</button>
+  const docUrl=(items.find(s=>s.doc_url)||{}).doc_url;
+  const lista=items.map(s=>{
+    const partes=[];
+    if(s.contenido) partes.push(`<div style="font-size:12px;color:var(--texto2);white-space:pre-wrap;margin:4px 0 6px">${s.contenido}</div>`);
+    if(s.archivo_url) partes.push(`<a href="${s.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul);display:block;margin-bottom:2px">📎 ${s.archivo_nombre}</a>`);
+    return `<div style="padding:8px 0;border-bottom:1px solid var(--borde)">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+        <div style="font-size:12px;font-weight:600">${s.titulo||'Informe de situación'} <span style="font-weight:400;color:var(--texto3)">(${fechaCorta(s.fecha)})</span></div>
+        <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:14px;flex-shrink:0" onclick="eliminarSeguimientoDicyt('${s.id}','${alumnoId}')">×</span>
       </div>
+      ${partes.join('')}
     </div>`;
+  }).join('');
+  return `${docUrl?`<a href="${docUrl}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--verde-dark);font-weight:600;display:inline-block;margin-bottom:6px">📝 Ver historial completo en Drive</a>`:''}
+    <div id="dicyt-sit-seg-lista-${alumnoId}">${lista || '<div style="font-size:12px;color:var(--texto3);padding:4px 0">Todavía no hay informes cargados.</div>'}</div>
+    <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="abrirComposeSeguimiento('${alumnoId}')">+ Nuevo informe de situación</button>
+    <div id="seg-compose-${alumnoId}"></div>`;
+}
+
+// Abre el bloque para escribir un informe nuevo: texto libre (se autoguarda
+// solo) + archivo opcional.
+function abrirComposeSeguimiento(alumnoId){
+  seguimientoBorradorId[alumnoId]=null;
+  const cont=document.getElementById('seg-compose-'+alumnoId);
+  if(!cont) return;
+  cont.innerHTML=`<div style="border:1px solid var(--borde);border-radius:var(--radius);padding:10px;margin-top:8px">
+    <input type="text" id="seg-titulo-${alumnoId}" placeholder="Título (opcional, ej: Seguimiento agosto)" style="font-size:12px;margin-bottom:6px;width:100%;box-sizing:border-box">
+    <textarea id="seg-texto-${alumnoId}" rows="4" placeholder="Escribí acá el informe de situación…" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:13px;padding:8px;border:1px solid var(--borde);border-radius:8px" oninput="autoguardarSeguimiento('${alumnoId}')"></textarea>
+    <div id="seg-estado-${alumnoId}" style="font-size:10px;color:var(--texto3);margin-top:3px;height:14px"></div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:6px">
+      <label for="seg-file-${alumnoId}" class="btn btn-secondary btn-sm" style="cursor:pointer">📎 Adjuntar archivo (opcional)</label>
+      <input type="file" id="seg-file-${alumnoId}" style="display:none" onchange="mostrarNombreArchivoSeg('${alumnoId}')">
+      <span id="seg-file-name-${alumnoId}" style="font-size:11px;color:var(--texto3)">Sin archivo elegido</span>
+      <button class="btn btn-secondary btn-sm" onclick="subirSeguimientoDicyt('${alumnoId}')">Subir archivo</button>
+    </div>
+    <button class="btn btn-primary btn-sm" style="margin-top:10px" onclick="cerrarComposeSeguimiento('${alumnoId}')">Listo</button>
+  </div>`;
+  document.getElementById('seg-texto-'+alumnoId).focus();
 }
 function mostrarNombreArchivoSeg(alumnoId){
   const input=document.getElementById('seg-file-'+alumnoId);
@@ -3513,38 +3543,76 @@ function mostrarNombreArchivoSeg(alumnoId){
   label.textContent=file?file.name:'Sin archivo elegido';
   label.title=file?file.name:'';
 }
+
+// Autoguardado: mientras se escribe, guarda 1.2s después de la última tecla
+// (no en cada tecla, para no saturar el servidor). La primera vez crea el
+// informe; después actualiza siempre el mismo.
+function autoguardarSeguimiento(alumnoId){
+  clearTimeout(seguimientoDebounce[alumnoId]);
+  const estado=document.getElementById('seg-estado-'+alumnoId);
+  if(estado) estado.textContent='Escribiendo…';
+  seguimientoDebounce[alumnoId]=setTimeout(async ()=>{
+    const textoInp=document.getElementById('seg-texto-'+alumnoId);
+    const tituloInp=document.getElementById('seg-titulo-'+alumnoId);
+    if(!textoInp) return;
+    const contenido=textoInp.value.trim();
+    if(!contenido && !seguimientoBorradorId[alumnoId]) return;
+    if(estado) estado.textContent='Guardando…';
+    try {
+      const cid=cursoDeAlumno(alumnoId);
+      const resp=await api('guardarTextoSeguimiento',{
+        id: seguimientoBorradorId[alumnoId] || undefined,
+        ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
+        titulo: tituloInp?tituloInp.value.trim():'', contenido,
+        actualizadoPor:sesion.nombre,
+      });
+      if(resp && resp.id) seguimientoBorradorId[alumnoId]=resp.id;
+      if(estado) estado.textContent='Guardado ✓ (también en Drive)';
+    } catch(e){
+      if(estado) estado.textContent='No se pudo guardar, reintentá';
+    }
+  }, 1200);
+}
+
 async function subirSeguimientoDicyt(alumnoId){
   const input=document.getElementById('seg-file-'+alumnoId);
   let file=input && input.files[0];
   if(!file){ toast('Elegí un archivo primero','err'); return; }
-  const tituloInp=document.getElementById('seg-titulo-'+alumnoId);
-  const titulo=tituloInp?tituloInp.value.trim():'';
-
-  const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
-  cont.innerHTML='<span style="font-size:11px;color:var(--texto3)">Subiendo…</span>';
+  const estado=document.getElementById('seg-estado-'+alumnoId);
+  if(estado) estado.textContent='Subiendo archivo…';
   try {
     file=await comprimirImagenSiCorresponde(file);
     if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
     const archivoBase64=await leerArchivoBase64(file);
     const cid=cursoDeAlumno(alumnoId);
-    await api('subirSeguimiento',{
+    const tituloInp=document.getElementById('seg-titulo-'+alumnoId);
+    const resp=await api('subirSeguimiento',{
+      id: seguimientoBorradorId[alumnoId] || undefined,
       ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
-      titulo, archivoBase64, nombreArchivo:file.name, mimeType:file.type,
+      titulo: tituloInp?tituloInp.value.trim():'',
+      archivoBase64, nombreArchivo:file.name, mimeType:file.type,
       actualizadoPor:sesion.nombre,
     });
-    toast('Informe de seguimiento agregado ✓');
-    await cargarSeguimientos(true);
-    cont.innerHTML=seguimientosListHTML(alumnoId);
+    if(resp && resp.id) seguimientoBorradorId[alumnoId]=resp.id;
+    toast('Archivo adjuntado ✓');
+    if(estado) estado.textContent='Archivo adjuntado ✓';
   } catch(e){
     toast('No se pudo subir: '+e.message,'err');
-    cont.innerHTML=seguimientosListHTML(alumnoId);
+    if(estado) estado.textContent='';
   }
 }
+async function cerrarComposeSeguimiento(alumnoId){
+  clearTimeout(seguimientoDebounce[alumnoId]);
+  await cargarSeguimientos(true);
+  const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
+  if(cont) cont.innerHTML=seguimientosListHTML(alumnoId);
+}
 async function eliminarSeguimientoDicyt(id, alumnoId){
-  if(!confirm('¿Borrar este informe de seguimiento?')) return;
+  if(!confirm('¿Borrar este informe de situación? (también se borra el archivo y el documento en Drive)')) return;
   try {
     await api('eliminarSeguimiento',{id});
     toast('Informe borrado ✓');
+    if(seguimientoBorradorId[alumnoId]===id) seguimientoBorradorId[alumnoId]=null;
     await cargarSeguimientos(true);
     const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
     if(cont) cont.innerHTML=seguimientosListHTML(alumnoId);
@@ -3601,7 +3669,7 @@ async function cargarSituacionesDicyt(){
       <div style="border-top:1px dashed var(--borde);padding-top:10px">
         <div class="section-label" style="margin-bottom:6px">📁 Legajo</div>
         <div class="field" style="margin-bottom:10px"><label>Archivo PPAT</label><div id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</div></div>
-        <div class="field"><label>Informes de seguimiento</label><div id="dicyt-sit-seg-${a.id}">${seguimientosListHTML(a.id)}</div></div>
+        <div class="field"><label>Informes de situación</label><div id="dicyt-sit-seg-${a.id}">${seguimientosListHTML(a.id)}</div></div>
       </div>
     </div>`;
   }).join('');
@@ -3748,9 +3816,16 @@ async function mostrarSituacionesInforme(){
       const wa=s.telefono_contacto ? formatWhatsapp(s.telefono_contacto) : '';
       const waMsg=encodeURIComponent(`Hola, nos comunicamos del CENS Nº 451 por la situación de ${s.nombre}.`);
       const segs=seguimientosCache[s.alumno_id]||[];
+      const segDocUrl=(segs.find(sg=>sg.doc_url)||{}).doc_url;
       const legajoItems=[
         s.ppat_archivo_url?`<div style="padding:4px 0"><a href="${s.ppat_archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul)">📎 PPAT — ${s.ppat_archivo_nombre||'Ver / descargar'}</a></div>`:'',
-        ...segs.map(sg=>`<div style="padding:4px 0"><a href="${sg.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul)">📄 ${sg.titulo?sg.titulo+' — ':''}${sg.archivo_nombre} <span style="color:var(--texto3)">(${fechaCorta(sg.fecha)})</span></a></div>`),
+        segDocUrl?`<div class="no-print" style="padding:4px 0"><a href="${segDocUrl}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--verde-dark);font-weight:600">📝 Ver historial completo en Drive</a></div>`:'',
+        ...segs.map(sg=>{
+          const partes=[`<div style="font-size:12px;font-weight:600">${sg.titulo||'Informe de situación'} <span style="font-weight:400;color:var(--texto3)">(${fechaCorta(sg.fecha)})</span></div>`];
+          if(sg.contenido) partes.push(`<div style="font-size:12px;color:var(--texto2);white-space:pre-wrap;margin:2px 0 4px">${sg.contenido}</div>`);
+          if(sg.archivo_url) partes.push(`<a href="${sg.archivo_url}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--azul);display:block">📎 ${sg.archivo_nombre}</a>`);
+          return `<div style="padding:4px 0">${partes.join('')}</div>`;
+        }),
       ].filter(Boolean).join('');
       return `<div class="card" style="padding:14px">
         <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:8px">
