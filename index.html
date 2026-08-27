@@ -3682,6 +3682,11 @@ const PLANTILLAS_WHATSAPP = {
   academicas: 'Hola, soy el profesor de DICYT del CENS N° 451. Estoy notando que tenés materias pendientes del primer cuatrimestre. Quería saber si pudiste comunicarte con los docentes y si necesitás ayuda con algún tema.',
   documentacion: 'Hola, soy el profesor de DICYT del CENS N° 451. Observo que falta documentación para que tu legajo esté completo. ¿Podrías acercarla cuando puedas?',
 };
+const ETIQUETAS_PLANTILLA = {
+  inasistencias: 'Inasistencias',
+  academicas: 'Cuestiones académicas',
+  documentacion: 'Documentación',
+};
 
 // Selector de plantilla + link de WhatsApp: aparece para cualquier alumno
 // con teléfono cargado, tenga o no una situación especial marcada.
@@ -3695,13 +3700,30 @@ function waButtonHTML(alumnoId, telRaw){
     <option value="documentacion">Por documentación</option>
   </select>`;
 }
-function enviarWhatsappPlantilla(alumnoId, clave){
+async function enviarWhatsappPlantilla(alumnoId, clave){
   if(!clave) return;
   const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
   const num=telInp?formatWhatsapp(telInp.value):'';
   if(!num){ toast('Este alumno no tiene teléfono cargado','err'); return; }
-  const texto=encodeURIComponent(PLANTILLAS_WHATSAPP[clave]||'');
+  const mensaje=PLANTILLAS_WHATSAPP[clave]||'';
+  const texto=encodeURIComponent(mensaje);
   window.open(`https://wa.me/${num}?text=${texto}`,'_blank');
+
+  // Queda registrado como informe de situación, para que haya constancia del contacto.
+  try {
+    const cid=cursoDeAlumno(alumnoId);
+    await api('guardarTextoSeguimiento',{
+      ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
+      titulo:'WhatsApp — '+(ETIQUETAS_PLANTILLA[clave]||clave),
+      contenido:'Se envió por WhatsApp el siguiente mensaje:\n\n'+mensaje,
+      actualizadoPor:sesion.nombre,
+    });
+    await cargarSeguimientos(true);
+    const cont=document.getElementById('dicyt-sit-seg-'+alumnoId);
+    if(cont) cont.innerHTML=seguimientosListHTML(alumnoId);
+  } catch(e){
+    console.warn('No se pudo registrar el mensaje como informe de situación:', e);
+  }
 }
 function actualizarWhatsappDicyt(alumnoId){
   const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
