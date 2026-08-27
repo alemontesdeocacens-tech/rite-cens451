@@ -3656,9 +3656,9 @@ async function cargarSituacionesDicyt(){
     const obs=(s.observaciones||'').replace(/"/g,'&quot;');
     const tel=(s.telefono_contacto||'').replace(/"/g,'&quot;');
     return `<div class="situ-card" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
         <div class="td-nombre" style="font-weight:600">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3);font-weight:400">${cursoNombre(a.curso)}</div>`}</div>
-        <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(tel)}</div>
+        <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(a.id, tel)}</div>
       </div>
       <div style="display:flex;gap:18px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}> PPAT</label>
@@ -3675,18 +3675,39 @@ async function cargarSituacionesDicyt(){
   }).join('');
 }
 
-// Botón/ícono de WhatsApp: aparece para cualquier alumno con teléfono
-// cargado, tenga o no una situación especial marcada.
-function waButtonHTML(telRaw){
+// Plantillas de mensaje para que Dicyt le escriba al alumno por WhatsApp
+// según el motivo del contacto.
+const PLANTILLAS_WHATSAPP = {
+  inasistencias: 'Hola, soy el profesor de DICYT del CENS N° 451. Estamos preocupados por tus inasistencias. Quería preguntarte si estás atravesando alguna situación en la que podamos ayudarte.',
+  academicas: 'Hola, soy el profesor de DICYT del CENS N° 451. Estoy notando que tenés materias pendientes del primer cuatrimestre. Quería saber si pudiste comunicarte con los docentes y si necesitás ayuda con algún tema.',
+  documentacion: 'Hola, soy el profesor de DICYT del CENS N° 451. Observo que falta documentación para que tu legajo esté completo. ¿Podrías acercarla cuando puedas?',
+};
+
+// Selector de plantilla + link de WhatsApp: aparece para cualquier alumno
+// con teléfono cargado, tenga o no una situación especial marcada.
+function waButtonHTML(alumnoId, telRaw){
   const num=formatWhatsapp(telRaw);
   if(!num) return '<span style="font-size:11px;color:var(--texto3)">Sin WhatsApp</span>';
-  return `<a href="https://wa.me/${num}" target="_blank" style="font-size:13px;text-decoration:none;color:#1a8a4a;font-weight:600;display:flex;align-items:center;gap:4px">💬 WhatsApp</a>`;
+  return `<select onchange="enviarWhatsappPlantilla('${alumnoId}', this.value); this.selectedIndex=0;" style="font-size:11px;padding:4px 6px;border-radius:8px;border:1px solid var(--borde);color:#1a8a4a;font-weight:600">
+    <option value="">💬 Enviar mensaje…</option>
+    <option value="inasistencias">Por inasistencias</option>
+    <option value="academicas">Por cuestiones académicas</option>
+    <option value="documentacion">Por documentación</option>
+  </select>`;
+}
+function enviarWhatsappPlantilla(alumnoId, clave){
+  if(!clave) return;
+  const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
+  const num=telInp?formatWhatsapp(telInp.value):'';
+  if(!num){ toast('Este alumno no tiene teléfono cargado','err'); return; }
+  const texto=encodeURIComponent(PLANTILLAS_WHATSAPP[clave]||'');
+  window.open(`https://wa.me/${num}?text=${texto}`,'_blank');
 }
 function actualizarWhatsappDicyt(alumnoId){
   const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
   const cell=document.getElementById('dicyt-sit-wa-'+alumnoId);
   if(!telInp||!cell) return;
-  cell.innerHTML=waButtonHTML(telInp.value);
+  cell.innerHTML=waButtonHTML(alumnoId, telInp.value);
 }
 
 // Genera el contenido del bloque "Archivo PPAT": link + borrar si ya hay uno
