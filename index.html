@@ -670,6 +670,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Situaciones especiales</div>
       <div class="mc-desc">Informe de PPAT y Prisión domiciliaria</div>
     </button>
+    <button class="menu-card" id="mc-dashboard-situaciones" style="display:none" onclick="go('s-dashboard-situaciones','')">
+      <div class="mc-icon">📊</div>
+      <div class="mc-title">Panorama de situaciones</div>
+      <div class="mc-desc">PPAT, informes y totales por curso</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -907,6 +912,15 @@ tr:hover td{background:#fafaf8}
     <button class="btn btn-secondary btn-sm no-print" style="margin-top:10px" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
   </div>
   <div id="sit-inf-content"></div>
+</div>
+
+<!-- ============ DASHBOARD DE SITUACIONES (Directivo) ============ -->
+<div class="screen" id="s-dashboard-situaciones">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Panorama de situaciones</div><div class="ns">PPAT, Prisión domiciliaria e informes</div></div>
+  </div>
+  <div id="dash-sit-content"></div>
 </div>
 
 </div><!-- /app -->
@@ -1282,6 +1296,7 @@ function go(screenId, arg){
     's-pendientes':setupPendientes,
     's-dicyt-situaciones':setupDicytSituaciones,
     's-situaciones-informe':setupSituacionesInforme,
+    's-dashboard-situaciones':setupDashboardSituaciones,
   };
   if(handlers[screenId]) handlers[screenId]();
 }
@@ -2248,6 +2263,8 @@ async function setupMenuPrec(){
   document.getElementById('prec-header-user').textContent=sesion.nombre;
   document.getElementById('prec-header-ciclo').textContent=cicloActual;
   mostrarBannerCiclo();
+  const mcDash=document.getElementById('mc-dashboard-situaciones');
+  if(mcDash) mcDash.style.display = sesion.rol==='directivo' ? '' : 'none';
   const cursosProp=cursosVisibles();
   const cursosIds=new Set(cursosProp.map(c=>c.id));
   const alumnosProp=sesion.rol==='preceptor'?ALUMNOS_RAW.filter(a=>cursosIds.has(a.curso)):ALUMNOS_RAW;
@@ -3512,12 +3529,53 @@ function seguimientosListHTML(alumnoId){
         <span class="chip-x" style="cursor:pointer;color:var(--rojo);font-size:14px;flex-shrink:0" onclick="eliminarSeguimientoDicyt('${s.id}','${alumnoId}')">×</span>
       </div>
       ${partes.join('')}
+      <button class="btn btn-secondary btn-sm" style="font-size:10px;padding:3px 8px;margin-top:2px" onclick="abrirRespuestaSeguimiento('${s.id}','${alumnoId}')">💬 Agregar respuesta del alumno</button>
+      <div id="seg-resp-${s.id}"></div>
     </div>`;
   }).join('');
   return `${docUrl?`<a href="${docUrl}" target="_blank" style="font-size:12px;text-decoration:none;color:var(--verde-dark);font-weight:600;display:inline-block;margin-bottom:6px">📝 Ver historial completo en Drive</a>`:''}
     <div id="dicyt-sit-seg-lista-${alumnoId}">${lista || '<div style="font-size:12px;color:var(--texto3);padding:4px 0">Todavía no hay informes cargados.</div>'}</div>
     <button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="abrirComposeSeguimiento('${alumnoId}')">+ Nuevo informe de situación</button>
     <div id="seg-compose-${alumnoId}"></div>`;
+}
+
+// Deja pegar/escribir lo que contestó el alumno (por ejemplo por WhatsApp) y
+// lo suma al mismo informe, con fecha, sin crear un informe nuevo ni volver
+// a avisarle a la Directora por mail (ya se avisó cuando se creó el informe).
+function abrirRespuestaSeguimiento(id, alumnoId){
+  const cont=document.getElementById('seg-resp-'+id);
+  if(!cont) return;
+  cont.innerHTML=`<div style="margin-top:6px">
+    <textarea id="seg-resp-texto-${id}" rows="3" placeholder="Pegá o escribí acá lo que contestó el alumno…" style="width:100%;box-sizing:border-box;font-family:inherit;font-size:12px;padding:6px;border:1px solid var(--borde);border-radius:8px"></textarea>
+    <div style="display:flex;gap:8px;margin-top:6px">
+      <button class="btn btn-primary btn-sm" onclick="guardarRespuestaSeguimiento('${id}','${alumnoId}')">Guardar respuesta</button>
+      <button class="btn btn-secondary btn-sm" onclick="document.getElementById('seg-resp-${id}').innerHTML=''">Cancelar</button>
+    </div>
+  </div>`;
+  document.getElementById('seg-resp-texto-'+id).focus();
+}
+async function guardarRespuestaSeguimiento(id, alumnoId){
+  const textoInp=document.getElementById('seg-resp-texto-'+id);
+  const texto=textoInp?textoInp.value.trim():'';
+  if(!texto){ toast('Escribí algo antes de guardar','err'); return; }
+  const entrada=(seguimientosCache[alumnoId]||[]).find(s=>s.id===id);
+  if(!entrada) return;
+  const fechaTxt=new Date().toLocaleString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'});
+  const contenidoNuevo=(entrada.contenido||'')+`\n\n— Respuesta del alumno (${fechaTxt}) —\n`+texto;
+  try {
+    const cid=cursoDeAlumno(alumnoId);
+    await api('guardarTextoSeguimiento',{
+      id, ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
+      titulo:entrada.titulo, contenido:contenidoNuevo,
+      actualizadoPor:sesion.nombre,
+    });
+    toast('Respuesta agregada ✓');
+    await cargarSeguimientos(true);
+    const listaCont=document.getElementById('dicyt-sit-seg-'+alumnoId);
+    if(listaCont) listaCont.innerHTML=seguimientosListHTML(alumnoId);
+  } catch(e){
+    toast('No se pudo guardar: '+e.message,'err');
+  }
 }
 
 // Abre el bloque para escribir un informe nuevo: texto libre (se autoguarda
@@ -3890,6 +3948,70 @@ async function mostrarSituacionesInforme(){
           ${legajoItems || '<div style="font-size:12px;color:var(--texto3)">Sin documentos cargados</div>'}
         </div>
       </div>`;}).join('')}`;
+}
+
+// =====================================================================
+// DASHBOARD DE SITUACIONES — panorama rápido para Directivo/a: cuántos PPAT
+// y Prisión domiciliaria hay activos, cuántos informes se cargaron este mes,
+// y el desglose por curso.
+// =====================================================================
+async function setupDashboardSituaciones(){
+  document.getElementById('dash-sit-content').innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  await Promise.all([cargarSituaciones(true), cargarSeguimientos(true)]);
+  mostrarDashboardSituaciones();
+}
+function mostrarDashboardSituaciones(){
+  const situaciones=Object.values(situacionesCache);
+  const hoy=new Date();
+  const todosSeguimientos=Object.values(seguimientosCache).flat();
+  const informesEsteMes=todosSeguimientos.filter(s=>{
+    const d=new Date(s.fecha);
+    return !isNaN(d) && d.getMonth()===hoy.getMonth() && d.getFullYear()===hoy.getFullYear();
+  });
+
+  const porCurso={};
+  const bucket=cid=>{ if(!porCurso[cid]) porCurso[cid]={ppat:0,prision:0,informesMes:0}; return porCurso[cid]; };
+  situaciones.forEach(s=>{
+    const b=bucket(s.curso_id||'—');
+    if(s.ppat) b.ppat++;
+    if(s.prision_domiciliaria) b.prision++;
+  });
+  informesEsteMes.forEach(s=>{ bucket(s.curso_id||'—').informesMes++; });
+
+  const filasCurso=Object.entries(porCurso)
+    .map(([cid,v])=>({cid,...v,nombre:cursoNombre(cid)||cid}))
+    .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+
+  const totalPpat=situaciones.filter(s=>s.ppat).length;
+  const totalPrision=situaciones.filter(s=>s.prision_domiciliaria).length;
+
+  document.getElementById('dash-sit-content').innerHTML=`
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:16px">
+      <div class="card" style="text-align:center;padding:16px 10px">
+        <div style="font-size:28px;font-weight:700;color:var(--verde-dark)">${totalPpat}</div>
+        <div style="font-size:11px;color:var(--texto2)">PPAT activos</div>
+      </div>
+      <div class="card" style="text-align:center;padding:16px 10px">
+        <div style="font-size:28px;font-weight:700;color:var(--rojo)">${totalPrision}</div>
+        <div style="font-size:11px;color:var(--texto2)">Prisión domiciliaria</div>
+      </div>
+      <div class="card" style="text-align:center;padding:16px 10px">
+        <div style="font-size:28px;font-weight:700;color:var(--azul)">${informesEsteMes.length}</div>
+        <div style="font-size:11px;color:var(--texto2)">Informes este mes</div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="section-label">Por curso</div>
+      <div class="tabla-wrap"><table>
+        <thead><tr><th>Curso</th><th>PPAT</th><th>Prisión domic.</th><th>Informes (mes)</th></tr></thead>
+        <tbody>${filasCurso.length?filasCurso.map(f=>`<tr>
+          <td class="td-nombre">${f.nombre}</td>
+          <td style="text-align:center">${f.ppat||0}</td>
+          <td style="text-align:center">${f.prision||0}</td>
+          <td style="text-align:center">${f.informesMes||0}</td>
+        </tr>`).join(''):'<tr><td colspan="4" class="empty">Sin datos todavía</td></tr>'}</tbody>
+      </table></div>
+    </div>`;
 }
 
 // =====================================================================
