@@ -830,6 +830,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Situaciones especiales</div>
       <div class="mc-desc">Marcar PPAT / Prisión domiciliaria</div>
     </button>
+    <button class="menu-card" onclick="go('s-situaciones-informe','')">
+      <div class="mc-icon">📋</div>
+      <div class="mc-title">Informe de situaciones</div>
+      <div class="mc-desc">Ver por curso, con legajos</div>
+    </button>
   </div>
   <div style="margin-top:14px;text-align:center">
     <button class="btn btn-secondary btn-sm no-print" onclick="logout()">Cerrar sesión</button>
@@ -882,10 +887,10 @@ tr:hover td{background:#fafaf8}
   </div>
 </div>
 
-<!-- ============ SITUACIONES ESPECIALES (Informe — preceptor / directivo) ============ -->
+<!-- ============ SITUACIONES ESPECIALES (Informe — preceptor / directivo / dicyt) ============ -->
 <div class="screen" id="s-situaciones-informe">
   <div class="nav no-print">
-    <button class="back-btn" onclick="go('s-menu-prec','')">←</button>
+    <button class="back-btn" onclick="go(sesion&&sesion.rol==='dicyt'?'s-menu-dicyt':'s-menu-prec','')">←</button>
     <div class="nav-info"><div class="nt">Situaciones especiales</div><div class="ns">PPAT y Prisión domiciliaria</div></div>
   </div>
   <div class="card no-print">
