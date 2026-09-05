@@ -2,8 +2,24 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>RITE CENS Digital</title>
+
+<!-- Instalación como app / ícono en pantalla de inicio -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1f5c3d">
+<meta name="apple-mobile-web-app-title" content="RITE CENS">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+
+<!-- iOS: que se abra como app (sin barra de Safari) al agregarla a la pantalla de inicio -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<!-- iOS suele "linkear" cualquier número que parezca teléfono; acá los mostramos
+     nosotros con nuestros propios links de WhatsApp, así que lo desactivamos -->
+<meta name="format-detection" content="telephone=no">
+
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -22,9 +38,14 @@
   --shadow:0 2px 12px rgba(90,60,20,.07);
   --shadow-lg:0 10px 32px rgba(90,60,20,.14);
 }
-body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);font-size:14px;min-height:100vh}
+body{font-family:'Sora',sans-serif;background:var(--gris);color:var(--texto);font-size:14px;min-height:100vh;min-height:100dvh}
 input[type=checkbox],input[type=radio]{accent-color:var(--verde);width:16px;height:16px;cursor:pointer}
-.app{max-width:720px;margin:0 auto;padding:12px 10px 80px}
+.app{max-width:720px;margin:0 auto;padding:calc(12px + env(safe-area-inset-top)) 10px calc(80px + env(safe-area-inset-bottom))}
+/* iOS Safari agranda la página solita si un input/select/textarea enfocado tiene
+   letra menor a 16px. Lo forzamos en pantallas chicas para que no "salte" el zoom. */
+@media (max-width:700px){
+  input,select,textarea{font-size:16px!important}
+}
 
 /* ===== HEADER ===== */
 .header{display:flex;align-items:center;gap:12px;padding:16px 20px;background:linear-gradient(135deg,var(--verde-dark) 0%,var(--verde-mid) 100%);border-radius:var(--radius-lg);margin-bottom:16px;color:white;box-shadow:var(--shadow-lg)}
@@ -61,7 +82,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--verde);width:16px;heig
 /* ===== FORM ===== */
 .field{margin-bottom:14px}
 .field label{display:block;font-size:12px;font-weight:500;color:var(--texto2);margin-bottom:5px}
-.field input,.field select,.field textarea{width:100%;padding:10px 13px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;background:var(--blanco);color:var(--texto);outline:none;transition:all .2s}
+.field input,.field select,.field textarea{-webkit-appearance:none;appearance:none;width:100%;padding:10px 13px;border:1.5px solid var(--borde);border-radius:var(--radius);font-family:inherit;font-size:14px;background:var(--blanco);color:var(--texto);outline:none;transition:all .2s}
 .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--verde);box-shadow:0 0 0 3px rgba(47,125,85,.1)}
 .field textarea{resize:vertical;min-height:70px}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
@@ -77,7 +98,7 @@ input[type=checkbox],input[type=radio]{accent-color:var(--verde);width:16px;heig
 .materia-filtros select:focus{border-color:var(--verde)}
 
 /* ===== BOTONES ===== */
-.btn{padding:10px 20px;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s}
+.btn{-webkit-appearance:none;appearance:none;padding:10px 20px;border-radius:var(--radius);font-family:inherit;font-size:14px;font-weight:500;cursor:pointer;border:none;transition:all .2s}
 .btn:active{transform:scale(.98)}
 .btn-primary{background:linear-gradient(135deg,var(--verde) 0%,var(--verde-mid) 100%);color:white;width:100%;padding:13px}
 .btn-primary:hover{background:var(--verde-mid);box-shadow:0 4px 16px rgba(47,125,85,.35)}
@@ -182,7 +203,7 @@ tr:hover td{background:#fafaf8}
 @keyframes spin{to{transform:rotate(360deg)}}
 
 /* ===== LOADING OVERLAY ===== */
-.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(4px)}
+.loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:9999;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 .loading-overlay .spinner{width:36px;height:36px;border-width:4px;margin-bottom:16px}
 .loading-overlay p{font-size:14px;color:var(--texto2);font-weight:500}
 
@@ -3729,6 +3750,10 @@ async function cargarSituacionesDicyt(){
       </div>
       <div class="field" style="margin-bottom:8px"><label>Observaciones</label><input type="text" data-tipo="obs" data-id="${a.id}" placeholder="Opcional" value="${obs}"></div>
       <div class="field" style="margin-bottom:10px"><label>Teléfono de contacto</label><input type="tel" data-tipo="tel" data-id="${a.id}" placeholder="Ej: 1122334455" value="${tel}" oninput="actualizarWhatsappDicyt('${a.id}')"></div>
+      <div style="border-top:1px dashed var(--borde);padding-top:10px;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:6px">📊 Asistencia</div>
+        <div id="dicyt-sit-asist-${a.id}"><button class="btn btn-secondary btn-sm" onclick="verAsistenciaDicyt('${a.id}')">Consultar asistencia</button></div>
+      </div>
       <div style="border-top:1px dashed var(--borde);padding-top:10px">
         <div class="section-label" style="margin-bottom:6px">📁 Legajo</div>
         <div class="field" style="margin-bottom:10px"><label>Archivo PPAT</label><div id="dicyt-sit-archivo-${a.id}">${archivoPpatCellHTML(a.id, s)}</div></div>
@@ -3736,6 +3761,48 @@ async function cargarSituacionesDicyt(){
       </div>
     </div>`;
   }).join('');
+}
+
+// =====================================================================
+// ASISTENCIA — consulta bajo demanda (no se trae para todo el curso de una,
+// para no ralentizar la carga) el % real de asistencia por cuatrimestre,
+// desde la misma planilla que usa el sistema de asistencia del CENS.
+// =====================================================================
+let asistenciaCache = {}; // alumnoId -> {q1,q2}
+
+async function verAsistenciaDicyt(alumnoId){
+  const cont=document.getElementById('dicyt-sit-asist-'+alumnoId);
+  if(!cont) return;
+  cont.innerHTML='<span style="font-size:11px;color:var(--texto3)">Consultando asistencia…</span>';
+  try {
+    const alumno=ALUMNOS_RAW.find(al=>al.id===alumnoId);
+    const cid=cursoDeAlumno(alumnoId);
+    const stats=await api('getAsistenciaAlumno',{nombreAlumno:alumno?alumno.nombre:'',cursoId:cid});
+    asistenciaCache[alumnoId]=stats;
+    cont.innerHTML=asistenciaResumenHTML(alumnoId, stats);
+  } catch(e){
+    cont.innerHTML='<span style="font-size:11px;color:var(--rojo)">No se pudo consultar la asistencia.</span>';
+  }
+}
+function asistenciaResumenHTML(alumnoId, stats){
+  const linea=(q,label)=>{
+    if(!q) return `<div style="font-size:12px;color:var(--texto3)">${label}: sin registros</div>`;
+    const color=q.pct>=75?'var(--verde-dark)':'var(--rojo)';
+    return `<div style="font-size:12px">${label}: <b>${q.asistidas}/${q.dias}</b> clases · <b style="color:${color}">${q.pct}%</b>${q.pct<75?' ⚠':''}</div>`;
+  };
+  const enRiesgo=(stats.q1&&stats.q1.pct<75)||(stats.q2&&stats.q2.pct<75);
+  return `${linea(stats.q1,'1er cuatrimestre')}${linea(stats.q2,'2do cuatrimestre')}
+    ${enRiesgo?`<button class="btn btn-secondary btn-sm" style="margin-top:6px" onclick="enviarWhatsappInasistenciasConDatos('${alumnoId}')">💬 Avisar por WhatsApp con estos datos</button>`:''}`;
+}
+async function enviarWhatsappInasistenciasConDatos(alumnoId){
+  const stats=asistenciaCache[alumnoId];
+  if(!stats) return;
+  const partes=[];
+  if(stats.q1 && stats.q1.pct<75) partes.push(`en el primer cuatrimestre asististe a ${stats.q1.asistidas} de ${stats.q1.dias} clases (${stats.q1.pct}%)`);
+  if(stats.q2 && stats.q2.pct<75) partes.push(`en el segundo cuatrimestre asististe a ${stats.q2.asistidas} de ${stats.q2.dias} clases (${stats.q2.pct}%)`);
+  const detalle=partes.join(' y ');
+  const mensaje=`Hola, soy el profesor de DICYT del CENS N° 451. Te escribo porque ${detalle}, por debajo del 75% requerido para mantener la regularidad. Estamos preocupados y queríamos preguntarte si estás atravesando alguna situación en la que podamos ayudarte.`;
+  await enviarWhatsappTexto(alumnoId, 'Inasistencias (con datos de asistencia)', mensaje);
 }
 
 // Plantillas de mensaje para que Dicyt le escriba al alumno por WhatsApp
@@ -3763,12 +3830,13 @@ function waButtonHTML(alumnoId, telRaw){
     <option value="documentacion">Por documentación</option>
   </select>`;
 }
-async function enviarWhatsappPlantilla(alumnoId, clave){
-  if(!clave) return;
+// Abre WhatsApp con el mensaje dado y lo deja registrado como informe de
+// situación. Reutilizable tanto para las plantillas fijas como para
+// mensajes armados con datos concretos (ej. asistencia).
+async function enviarWhatsappTexto(alumnoId, etiqueta, mensaje){
   const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
   const num=telInp?formatWhatsapp(telInp.value):'';
   if(!num){ toast('Este alumno no tiene teléfono cargado','err'); return; }
-  const mensaje=PLANTILLAS_WHATSAPP[clave]||'';
   const texto=encodeURIComponent(mensaje);
   window.open(`https://wa.me/${num}?text=${texto}`,'_blank');
 
@@ -3777,7 +3845,7 @@ async function enviarWhatsappPlantilla(alumnoId, clave){
     const cid=cursoDeAlumno(alumnoId);
     await api('guardarTextoSeguimiento',{
       ciclo:cicloActual, alumnoId, cursoId:cid, cursoNombre:cursoNombre(cid),
-      titulo:'WhatsApp — '+(ETIQUETAS_PLANTILLA[clave]||clave),
+      titulo:'WhatsApp — '+etiqueta,
       contenido:'Se envió por WhatsApp el siguiente mensaje:\n\n'+mensaje,
       actualizadoPor:sesion.nombre,
     });
@@ -3787,6 +3855,10 @@ async function enviarWhatsappPlantilla(alumnoId, clave){
   } catch(e){
     console.warn('No se pudo registrar el mensaje como informe de situación:', e);
   }
+}
+async function enviarWhatsappPlantilla(alumnoId, clave){
+  if(!clave) return;
+  await enviarWhatsappTexto(alumnoId, ETIQUETAS_PLANTILLA[clave]||clave, PLANTILLAS_WHATSAPP[clave]||'');
 }
 function actualizarWhatsappDicyt(alumnoId){
   const telInp=document.querySelector(`#dicyt-sit-lista input[data-tipo="tel"][data-id="${alumnoId}"]`);
