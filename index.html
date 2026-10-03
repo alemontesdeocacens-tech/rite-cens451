@@ -988,11 +988,24 @@ tr:hover td{background:#fafaf8}
 // =====================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwxwnbcwOdwfS7GdZ-nGVty3H8dorFOM4p6T-kn_NP5NQ_ZCrnffttUMGYaF4fvWv9H/exec';
 
-async function api(action, body = {}) {
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify({ action, ...body }),
-  });
+async function api(action, body = {}, timeoutMs = 0) {
+  // timeoutMs > 0 se usa solo en el arranque, para no quedar esperando
+  // si Google no responde. Las demás llamadas esperan como siempre.
+  const ctrl = timeoutMs ? new AbortController() : null;
+  const timer = ctrl ? setTimeout(() => ctrl.abort(), timeoutMs) : null;
+  let res;
+  try {
+    res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({ action, ...body }),
+      signal: ctrl ? ctrl.signal : undefined,
+    });
+  } catch (e) {
+    if (e && e.name === 'AbortError') throw new Error('Google tardó demasiado en responder');
+    throw e;
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Error de API');
   return json.data;
@@ -1277,7 +1290,7 @@ async function cargarMaterias(){
 const ALUMNOS_CACHE_KEY = 'rite_alumnos_cache_v1';
 async function cargarAlumnos(){
   try {
-    const data = await api('getAlumnos', {});
+    const data = await api('getAlumnos', {}, 12000);
     if(Array.isArray(data) && data.length){
       ALUMNOS_RAW = data;
       try { localStorage.setItem(ALUMNOS_CACHE_KEY, JSON.stringify(ALUMNOS_RAW)); } catch(e){}
@@ -3904,27 +3917,55 @@ async function cargarSituacionesDicyt(){
 // el alumno oculto sigue figurando en informes, notas y demás pantallas.
 let dicyMostrarOcultos=false;
 let ocultosDicytCache=new Set();
-async function cargarOcultosDicyt(){
-  try {
-    const ids=await api('getOcultosDicyt',{ciclo:cicloActual});
-    ocultosDicytCache=new Set((ids||[]).map(String));
-  } catch(e){
-    toast('No se pudieron cargar los alumnos ocultos: '+e.message,'err');
+let ocultosDicytUltimoError='';
+// Se guarda al instante en este dispositivo y se sincroniza con la planilla
+// apenas Google responde (si falla, queda pendiente y se reintenta solo).
+function claveOcDic(t){ return 'rite_dicyt_oc_'+t+'_'+cicloActual; }
+function leerLSDic(k,def){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):def; }catch(e){ return def; } }
+function guardarLSDic(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+async function enviarPendientesOcultosDicyt(){
+  const pend=leerLSDic(claveOcDic('pend'),{});
+  for(const id of Object.keys(pend)){
+    try {
+      await api('setOcultoDicyt',{ciclo:cicloActual,alumnoId:id,oculto:!!pend[id],por:sesion?sesion.nombre:''});
+      const p2=leerLSDic(claveOcDic('pend'),{});
+      if(p2[id]===pend[id]) delete p2[id];
+      guardarLSDic(claveOcDic('pend'),p2);
+    } catch(e){
+      ocultosDicytUltimoError=e.message||String(e);
+      return false;
+    }
   }
+  return true;
+}
+async function cargarOcultosDicyt(){
+  let base;
+  try {
+    const ids=await api('getOcultosDicyt',{ciclo:cicloActual},8000);
+    base=new Set((ids||[]).map(String));
+    guardarLSDic(claveOcDic('last'),[...base]);
+  } catch(e){
+    base=new Set(leerLSDic(claveOcDic('last'),[]).map(String));
+    toast('No se pudo consultar la planilla; se usan los ocultos guardados en este dispositivo','err');
+  }
+  const pend=leerLSDic(claveOcDic('pend'),{});
+  Object.keys(pend).forEach(id=>{ if(pend[id]) base.add(id); else base.delete(id); });
+  ocultosDicytCache=base;
+  enviarPendientesOcultosDicyt(); // en segundo plano
 }
 function leerOcultosDicyt(){ return ocultosDicytCache; }
 async function alternarOcultoDicyt(id){
   const sid=String(id);
   const ocultar=!ocultosDicytCache.has(sid);
   if(ocultar) ocultosDicytCache.add(sid); else ocultosDicytCache.delete(sid);
+  guardarLSDic(claveOcDic('last'),[...ocultosDicytCache]);
+  const pend=leerLSDic(claveOcDic('pend'),{});
+  pend[sid]=ocultar;
+  guardarLSDic(claveOcDic('pend'),pend);
   aplicarOcultosDicyt();
-  try {
-    await api('setOcultoDicyt',{ciclo:cicloActual,alumnoId:sid,oculto:ocultar,por:sesion.nombre});
-  } catch(e){
-    if(ocultar) ocultosDicytCache.delete(sid); else ocultosDicytCache.add(sid);
-    aplicarOcultosDicyt();
-    toast('No se pudo ocultar/mostrar: '+e.message,'err');
-  }
+  const ok=await enviarPendientesOcultosDicyt();
+  if(!ok) toast('Quedó guardado en este dispositivo; se sincroniza cuando Google responda ('+ocultosDicytUltimoError+')','err');
 }
 function alternarVerOcultosDicyt(){
   dicyMostrarOcultos=!dicyMostrarOcultos;
@@ -4276,22 +4317,41 @@ function mostrarDashboardSituaciones(){
 // =====================================================================
 async function init(){
   await cargarDatosLocales();
-  // Cargar config desde el sheet
-  try {
-    const config=await api('getConfig',{});
+  // Si ya hay copia local de alumnos y configuración, la app abre al instante
+  // y se actualiza de fondo cuando Google responde. La primera vez (sin copia)
+  // espera como antes.
+  const CONFIG_CACHE_KEY='rite_config_cache_v1';
+  const aplicarConfig=(config)=>{
     cicloActual=String(config.ciclo_lectivo||'2026');
     cicloSugerido=String(config.ciclo_lectivo_sugerido||cicloActual);
     document.getElementById('hero-cens-nombre').textContent=config.nombre_cens||'CENS Nº 451';
     document.getElementById('hero-distrito').textContent=`${config.distrito||'La Matanza'} · ${config.provincia||'Buenos Aires'}`;
-  } catch(e){
-    cicloActual='2026';
-    cicloSugerido='2026';
+    document.getElementById('hero-ciclo').textContent=cicloActual;
+  };
+  let hayAlumnosCache=false, hayConfigCache=false;
+  try {
+    const c=JSON.parse(localStorage.getItem(ALUMNOS_CACHE_KEY)||'null');
+    if(Array.isArray(c)&&c.length){ ALUMNOS_RAW=c; hayAlumnosCache=true; }
+    const cfg=JSON.parse(localStorage.getItem(CONFIG_CACHE_KEY)||'null');
+    if(cfg){ aplicarConfig(cfg); hayConfigCache=true; }
+  } catch(e){}
+
+  const pConfig=(async()=>{
+    try {
+      const config=await api('getConfig',{},12000);
+      try { localStorage.setItem(CONFIG_CACHE_KEY, JSON.stringify(config)); } catch(e){}
+      aplicarConfig(config);
+    } catch(e){
+      if(!hayConfigCache){ cicloActual='2026'; cicloSugerido='2026'; }
+    }
+    document.getElementById('hero-ciclo').textContent=cicloActual;
+  })();
+  const pAlumnos=cargarAlumnos();
+  if(!(hayAlumnosCache&&hayConfigCache)){
+    showOverlay('Cargando alumnos…');
+    await Promise.all([pConfig, pAlumnos]);
+    hideOverlay();
   }
-  document.getElementById('hero-ciclo').textContent=cicloActual;
-  // Cargar listado de alumnos (matrícula real) desde el sheet de Asistencia
-  showOverlay('Cargando alumnos…');
-  await cargarAlumnos();
-  hideOverlay();
 
   // Auto-login: si venimos del botón "RITE" de la app de Asistencia
   // (?from=asistencia), entramos directo sin pedir clave de nuevo, ya que
