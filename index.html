@@ -3909,7 +3909,7 @@ async function cargarOcultosDicyt(){
     const ids=await api('getOcultosDicyt',{ciclo:cicloActual});
     ocultosDicytCache=new Set((ids||[]).map(String));
   } catch(e){
-    toast('No se pudieron cargar los alumnos ocultos','err');
+    toast('No se pudieron cargar los alumnos ocultos: '+e.message,'err');
   }
 }
 function leerOcultosDicyt(){ return ocultosDicytCache; }
@@ -3923,7 +3923,7 @@ async function alternarOcultoDicyt(id){
   } catch(e){
     if(ocultar) ocultosDicytCache.delete(sid); else ocultosDicytCache.add(sid);
     aplicarOcultosDicyt();
-    toast('No se pudo guardar. Reintentá.','err');
+    toast('No se pudo ocultar/mostrar: '+e.message,'err');
   }
 }
 function alternarVerOcultosDicyt(){
