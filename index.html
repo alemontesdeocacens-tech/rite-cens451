@@ -933,10 +933,14 @@ tr:hover td{background:#fafaf8}
   <div class="info-box">🛡️ Marcá a cada alumno/a que esté bajo una PPAT (Propuesta Pedagógica de Acompañamiento de Trayectoria) o en Prisión Domiciliaria. Preceptoría y Dirección van a poder ver esta información en su informe.</div>
   <div class="card no-print">
     <div class="field"><label>Curso</label><select id="dicyt-sit-curso" onchange="cargarSituacionesDicyt()"></select></div>
+    <label style="display:flex;align-items:center;gap:8px;font-size:12px;cursor:pointer;margin-top:4px">
+      <input type="checkbox" id="dicyt-sit-ver-ocultos" onchange="aplicarOcultosDicyt()"> Mostrar alumnos ocultos (<span id="dicyt-sit-n-ocultos">0</span>)
+    </label>
   </div>
   <div class="card">
     <div class="section-label">Alumnos/as</div>
     <div id="dicyt-sit-lista"></div>
+    <div id="dicyt-sit-oculto-msg" class="empty" style="display:none">Todos los alumnos de este curso están ocultos. Activá "Mostrar alumnos ocultos" para verlos.</div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="guardarSituacionesDicyt()">💾 Guardar situaciones</button>
   </div>
 </div>
@@ -3873,10 +3877,13 @@ async function cargarSituacionesDicyt(){
     const s=situacionesCache[a.id]||{};
     const obs=(s.observaciones||'').replace(/"/g,'&quot;');
     const tel=(s.telefono_contacto||'').replace(/"/g,'&quot;');
-    return `<div class="situ-card" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
+    return `<div class="situ-card" data-alumno="${a.id}" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
         <div class="td-nombre" style="font-weight:600">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3);font-weight:400">${cursoNombre(a.curso)}</div>`}</div>
-        <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(a.id, tel)}</div>
+        <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+          <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(a.id, tel)}</div>
+          <button class="btn btn-secondary btn-sm" id="dicyt-sit-ocultar-${a.id}" onclick="toggleOcultoDicyt('${a.id}')">🙈 Ocultar</button>
+        </div>
       </div>
       <div style="display:flex;gap:18px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}> PPAT</label>
@@ -3899,6 +3906,53 @@ async function cargarSituacionesDicyt(){
       </div>
     </div>`;
   }).join('');
+  aplicarOcultosDicyt();
+}
+
+// =====================================================================
+// OCULTAR / MOSTRAR alumnos en Situaciones especiales (Dicyt)
+// Se guarda en este navegador (localStorage). Ocultar es solo visual: no borra
+// nada ni cambia lo guardado, y las tarjetas ocultas siguen en pantalla (display:none),
+// así que "Guardar situaciones" funciona igual.
+// =====================================================================
+function claveOcultosDicyt(){ return 'rite_dicyt_ocultos_'+cicloActual; }
+function leerOcultosDicyt(){
+  try {
+    const raw=localStorage.getItem(claveOcultosDicyt());
+    return new Set(raw?JSON.parse(raw).map(String):[]);
+  } catch(_){ return new Set(); }
+}
+function guardarOcultosDicyt(set){
+  try { localStorage.setItem(claveOcultosDicyt(), JSON.stringify(Array.from(set))); } catch(_){}
+}
+function toggleOcultoDicyt(alumnoId){
+  const set=leerOcultosDicyt();
+  const id=String(alumnoId);
+  if(set.has(id)) set.delete(id); else set.add(id);
+  guardarOcultosDicyt(set);
+  aplicarOcultosDicyt();
+}
+function aplicarOcultosDicyt(){
+  const set=leerOcultosDicyt();
+  const chk=document.getElementById('dicyt-sit-ver-ocultos');
+  const ver=!!(chk&&chk.checked);
+  const cards=document.querySelectorAll('#dicyt-sit-lista .situ-card');
+  let nOcultos=0, visibles=0;
+  cards.forEach(c=>{
+    const id=String(c.getAttribute('data-alumno'));
+    const oculto=set.has(id);
+    if(oculto) nOcultos++;
+    const mostrar=!oculto||ver;
+    c.style.display=mostrar?'':'none';
+    c.style.opacity=oculto?'0.65':'';
+    if(mostrar) visibles++;
+    const btn=document.getElementById('dicyt-sit-ocultar-'+id);
+    if(btn) btn.textContent=oculto?'👁 Volver a mostrar':'🙈 Ocultar';
+  });
+  const n=document.getElementById('dicyt-sit-n-ocultos');
+  if(n) n.textContent=nOcultos;
+  const msg=document.getElementById('dicyt-sit-oculto-msg');
+  if(msg) msg.style.display=(cards.length&&!visibles)?'':'none';
 }
 
 // =====================================================================
