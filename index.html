@@ -3781,7 +3781,9 @@ async function verAsistenciaDicyt(alumnoId){
     asistenciaCache[alumnoId]=stats;
     cont.innerHTML=asistenciaResumenHTML(alumnoId, stats);
   } catch(e){
-    cont.innerHTML='<span style="font-size:11px;color:var(--rojo)">No se pudo consultar la asistencia.</span>';
+    console.error('Asistencia:', e);
+    const msg=String((e&&e.message)||e||'').replace(/</g,'&lt;');
+    cont.innerHTML='<span style="font-size:11px;color:var(--rojo)">No se pudo consultar la asistencia: '+msg+'</span>';
   }
 }
 function asistenciaResumenHTML(alumnoId, stats){
