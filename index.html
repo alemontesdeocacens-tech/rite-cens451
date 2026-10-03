@@ -557,6 +557,29 @@ tr:hover td{background:#fafaf8}
   <div id="mv-lista"></div>
 </div>
 
+<!-- ============ DICYT — SUBIR ARCHIVOS A ALUMNOS ============ -->
+<div class="screen" id="s-materiales-dicyt">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-dicyt','')">←</button>
+    <div class="nav-info"><div class="nt">Subir archivos a alumnos</div><div class="ns">Lo ve el alumno en su perfil → Material</div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Elegí un alumno puntual o todo el curso. Aparece en la pestaña "Material" del perfil del alumno, bajo "Dicyt".</div>
+    <div class="field"><label>Curso</label><select id="md-curso-sel" onchange="poblarAlumnosMatDicyt();cargarListaMaterialesDicyt()"></select></div>
+    <div class="field"><label>Para</label><select id="md-alumno-sel"></select></div>
+    <div class="field"><label>Cuatrimestre</label>
+      <select id="md-cuatri"><option value="1">1° Cuatrimestre</option><option value="2">2° Cuatrimestre</option></select>
+    </div>
+    <div class="field"><label>Título (opcional)</label><input type="text" id="md-titulo" placeholder="Ej: Guía de actividades"></div>
+    <div class="field"><label>Archivo</label><input type="file" id="md-archivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
+    <button class="btn btn-primary" style="margin-top:4px" onclick="subirMaterialDicyt()" id="md-btn">📎 Subir archivo</button>
+  </div>
+  <div class="card">
+    <div class="section-label">Subido por Dicyt en este curso</div>
+    <div id="md-lista"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
+  </div>
+</div>
+
 <!-- ============ VER CALENDARIO (preceptor / directivo / dicyt) ============ -->
 <div class="screen" id="s-calendario-ver">
   <div class="nav no-print">
@@ -690,6 +713,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-icon">🛡️</div>
       <div class="mc-title">Situaciones especiales</div>
       <div class="mc-desc">Informe de PPAT y Prisión domiciliaria</div>
+    </button>
+    <button class="menu-card" onclick="go('s-materiales-dicyt','')">
+      <div class="mc-icon">📤</div>
+      <div class="mc-title">Subir archivos a alumnos</div>
+      <div class="mc-desc">Material para un alumno o todo el curso</div>
     </button>
     <button class="menu-card" id="mc-dashboard-situaciones" style="display:none" onclick="go('s-dashboard-situaciones','')">
       <div class="mc-icon">📊</div>
@@ -1303,6 +1331,7 @@ function go(screenId, arg){
     's-doc-ver-curso':setupDocVerCurso,
     's-materiales-doc':setupMaterialesDoc,
     's-materiales-ver':setupMaterialesVer,
+    's-materiales-dicyt':setupMaterialesDicyt,
     's-calendario-ver':setupCalendarioVer,
     's-calendario-doc':setupCalendarioDoc,
     's-menu-prec':setupMenuPrec,
@@ -1947,6 +1976,111 @@ async function borrarMaterialDoc(id){
     await api('eliminarMaterial',{id});
     toast('Material borrado ✓');
     await cargarListaMaterialesDoc();
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
+// =====================================================================
+// DICYT — SUBE ARCHIVOS PARA ALUMNOS (reutiliza subirMaterial / getMaterialesCurso /
+// eliminarMaterial del backend; el alumno lo ve en su pestaña "Material")
+// =====================================================================
+let pendienteMatDicyt=null; // {cursoId, alumnoId} cuando se llega desde Situaciones especiales
+
+function cuatriActualDicyt(){ return new Date().getMonth()>=7?'2':'1'; }
+
+function poblarAlumnosMatDicyt(alumnoIdSel){
+  const cursoId=document.getElementById('md-curso-sel').value;
+  const sel=document.getElementById('md-alumno-sel');
+  const alumnos=alumnosDeCurso(cursoId).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">Todo el curso</option>'+
+    alumnos.map(a=>`<option value="${a.id}">${a.nombre}</option>`).join('');
+  if(alumnoIdSel) sel.value=String(alumnoIdSel);
+}
+
+async function setupMaterialesDicyt(){
+  poblaCursoSel('md-curso-sel');
+  const pend=pendienteMatDicyt; pendienteMatDicyt=null;
+  if(pend&&pend.cursoId) document.getElementById('md-curso-sel').value=pend.cursoId;
+  poblarAlumnosMatDicyt(pend&&pend.alumnoId);
+  document.getElementById('md-cuatri').value=cuatriActualDicyt();
+  document.getElementById('md-titulo').value='';
+  document.getElementById('md-archivo').value='';
+  await cargarListaMaterialesDicyt();
+}
+
+function irASubirMaterialDicyt(cursoId,alumnoId){
+  pendienteMatDicyt={cursoId,alumnoId};
+  go('s-materiales-dicyt','');
+}
+
+async function cargarListaMaterialesDicyt(){
+  const cursoId=document.getElementById('md-curso-sel').value;
+  const cont=document.getElementById('md-lista');
+  if(!cursoId){ cont.innerHTML=''; return; }
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const materiales=await api('getMaterialesCurso',{ciclo:cicloActual,cursoId});
+    const propios=materiales.filter(m=>String(m.docente_dni)==='dicyt');
+    if(!propios.length){
+      cont.innerHTML='<span style="font-size:12px;color:var(--texto3)">Todavía no subiste archivos en este curso.</span>';
+      return;
+    }
+    const alumnos=alumnosDeCurso(cursoId);
+    cont.innerHTML=propios.map(m=>{
+      const alumno=m.alumno_id?alumnos.find(a=>String(a.id)===String(m.alumno_id)):null;
+      const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+      return `<div class="chip" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;justify-content:space-between">
+        <a href="${m.drive_url}" target="_blank" style="text-decoration:none;color:var(--texto)">
+          📎 <strong>${m.titulo}</strong><br><span style="font-size:11px;color:var(--texto3)">${destino} · ${m.cuatrimestre}° cuatrimestre · ${m.nombre_archivo}</span>
+        </a>
+        <span class="chip-x" onclick="borrarMaterialDicyt('${m.id}')">×</span>
+      </div>`;
+    }).join('');
+  } catch(e){
+    cont.innerHTML='<span style="font-size:12px;color:var(--rojo)">No se pudo cargar la lista: '+String((e&&e.message)||e)+'</span>';
+  }
+}
+
+async function subirMaterialDicyt(){
+  const cursoId=document.getElementById('md-curso-sel').value;
+  if(!cursoId){ toast('Elegí un curso','err'); return; }
+  const input=document.getElementById('md-archivo');
+  let file=input.files[0];
+  if(!file){ toast('Elegí un archivo','err'); return; }
+
+  const btn=document.getElementById('md-btn');
+  btn.disabled=true; btn.textContent='Subiendo…';
+  try {
+    file=await comprimirImagenSiCorresponde(file);
+    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
+    const archivoBase64=await leerArchivoBase64(file);
+    const alumnoId=document.getElementById('md-alumno-sel').value;
+    const titulo=document.getElementById('md-titulo').value.trim();
+    await api('subirMaterial',{
+      ciclo:cicloActual,cursoId,alumnoId:alumnoId||'',
+      docenteDni:'dicyt',docenteNombre:(sesion&&sesion.nombre)||'Dicyt',
+      materia:'Dicyt',anio:anioDeCurso(cursoId),
+      cuatrimestre:document.getElementById('md-cuatri').value,
+      titulo,archivoBase64,nombreArchivo:file.name,mimeType:file.type,
+    });
+    toast('Archivo subido ✓');
+    document.getElementById('md-titulo').value='';
+    input.value='';
+    await cargarListaMaterialesDicyt();
+  } catch(e){
+    toast('No se pudo subir: '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='📎 Subir archivo';
+  }
+}
+
+async function borrarMaterialDicyt(id){
+  if(!confirm('¿Borrar este archivo?')) return;
+  try {
+    await api('eliminarMaterial',{id});
+    toast('Archivo borrado ✓');
+    await cargarListaMaterialesDicyt();
   } catch(e){
     toast('No se pudo borrar: '+e.message,'err');
   }
@@ -3753,6 +3887,10 @@ async function cargarSituacionesDicyt(){
       <div style="border-top:1px dashed var(--borde);padding-top:10px;margin-bottom:10px">
         <div class="section-label" style="margin-bottom:6px">📊 Asistencia</div>
         <div id="dicyt-sit-asist-${a.id}"><button class="btn btn-secondary btn-sm" onclick="verAsistenciaDicyt('${a.id}')">Consultar asistencia</button></div>
+      </div>
+      <div style="border-top:1px dashed var(--borde);padding-top:10px;margin-bottom:10px">
+        <div class="section-label" style="margin-bottom:6px">📤 Material para el alumno</div>
+        <button class="btn btn-secondary btn-sm" onclick="irASubirMaterialDicyt('${a.curso}','${a.id}')">Subir archivo</button>
       </div>
       <div style="border-top:1px dashed var(--borde);padding-top:10px">
         <div class="section-label" style="margin-bottom:6px">📁 Legajo</div>
