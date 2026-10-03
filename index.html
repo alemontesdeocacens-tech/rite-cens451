@@ -851,6 +851,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Calendario</div>
       <div class="mc-desc">Entregas y evaluaciones por curso</div>
     </button>
+    <button class="menu-card" onclick="go('s-dicyt-archivos','')">
+      <div class="mc-icon">📤</div>
+      <div class="mc-title">Archivos para estudiantes</div>
+      <div class="mc-desc">Subir material al curso o a un alumno</div>
+    </button>
     <button class="menu-card" onclick="go('s-dicyt-situaciones','')">
       <div class="mc-icon">🛡️</div>
       <div class="mc-title">Situaciones especiales</div>
@@ -896,6 +901,34 @@ tr:hover td{background:#fafaf8}
   </div>
 </div>
 
+<!-- ============ ARCHIVOS PARA ESTUDIANTES (DICYT) ============ -->
+<div class="screen" id="s-dicyt-archivos">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go('s-menu-dicyt','')">←</button>
+    <div class="nav-info"><div class="nt">Archivos para estudiantes</div><div class="ns">Lo ven en la pestaña Material de su perfil</div></div>
+  </div>
+  <div class="card">
+    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Elegí "Todo el curso" o un alumno puntual. Los estudiantes lo ven al entrar con su DNI, en Material, bajo "Dicyt".</div>
+    <div class="field-row">
+      <div class="field"><label>Cuatrimestre</label>
+        <select id="dar-cuatri" onchange="cargarListaArchivosDicyt()">
+          <option value="1">1° Cuatrimestre</option>
+          <option value="2">2° Cuatrimestre</option>
+        </select>
+      </div>
+      <div class="field"><label>Curso</label><select id="dar-curso" onchange="cambiarCursoArchivosDicyt()"></select></div>
+    </div>
+    <div class="field"><label>Para</label><select id="dar-alumno"></select></div>
+    <div class="field"><label>Título (opcional)</label><input type="text" id="dar-titulo" placeholder="Ej: Consigna del Proyecto de Acción"></div>
+    <div class="field"><label>Archivo</label><input type="file" id="dar-archivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
+    <button class="btn btn-primary" style="margin-top:4px" onclick="subirArchivoDicytEstudiantes()" id="dar-btn">📎 Subir archivo</button>
+  </div>
+  <div class="card">
+    <div class="section-label">Ya subido para este curso</div>
+    <div id="dar-lista"><div class="loading"><div class="spinner"></div>Cargando…</div></div>
+  </div>
+</div>
+
 <!-- ============ SITUACIONES ESPECIALES (DICYT — marcar) ============ -->
 <div class="screen" id="s-dicyt-situaciones">
   <div class="nav no-print">
@@ -908,6 +941,7 @@ tr:hover td{background:#fafaf8}
   </div>
   <div class="card">
     <div class="section-label">Alumnos/as</div>
+    <div id="dicyt-sit-ocultos-bar" class="no-print" style="margin-bottom:10px"></div>
     <div id="dicyt-sit-lista"></div>
     <button class="btn btn-primary" style="margin-top:14px" onclick="guardarSituacionesDicyt()">💾 Guardar situaciones</button>
   </div>
@@ -1314,6 +1348,7 @@ function go(screenId, arg){
     's-promedios':setupPromedios,
     's-menu-dicyt':setupMenuDicyt,
     's-dicyt-proyecto':setupDicytProyecto,
+    's-dicyt-archivos':setupDicytArchivos,
     's-pendientes':setupPendientes,
     's-dicyt-situaciones':setupDicytSituaciones,
     's-situaciones-informe':setupSituacionesInforme,
@@ -3486,6 +3521,103 @@ async function guardarDicyt(){
 }
 
 // =====================================================================
+// ARCHIVOS PARA ESTUDIANTES (Dicyt sube; el estudiante lo ve en "Material")
+// Reutiliza el sistema de Materiales con materia = "Dicyt".
+// =====================================================================
+const MATERIA_DICYT='Dicyt';
+
+function escArchDicyt(t){
+  return String(t==null?'':t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function setupDicytArchivos(){
+  poblaCursoSel('dar-curso');
+  document.getElementById('dar-titulo').value='';
+  document.getElementById('dar-archivo').value='';
+  cambiarCursoArchivosDicyt();
+}
+
+function cambiarCursoArchivosDicyt(){
+  const cid=document.getElementById('dar-curso').value;
+  const sel=document.getElementById('dar-alumno');
+  const alumnos=alumnosDeCurso(cid).sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">Todo el curso</option>'+
+    alumnos.map(a=>`<option value="${escArchDicyt(a.id)}">${escArchDicyt(a.nombre)}</option>`).join('');
+  cargarListaArchivosDicyt();
+}
+
+async function cargarListaArchivosDicyt(){
+  const cid=document.getElementById('dar-curso').value;
+  const q=document.getElementById('dar-cuatri').value;
+  const cont=document.getElementById('dar-lista');
+  if(!cid){ cont.innerHTML=''; return; }
+  cont.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
+  try {
+    const materiales=await api('getMaterialesCurso',{ciclo:cicloActual,cursoId:cid});
+    const propios=materiales.filter(m=>m.materia===MATERIA_DICYT&&String(m.cuatrimestre)===String(q));
+    if(!propios.length){
+      cont.innerHTML='<span style="font-size:12px;color:var(--texto3)">Todavía no subiste archivos para este curso y cuatrimestre.</span>';
+      return;
+    }
+    const alumnos=alumnosDeCurso(cid);
+    cont.innerHTML=propios.map(m=>{
+      const alumno=m.alumno_id?alumnos.find(a=>String(a.id)===String(m.alumno_id)):null;
+      const destino=alumno?`Para: ${alumno.nombre}`:'Para: todo el curso';
+      return `<div class="chip" style="display:flex;align-items:center;gap:8px;width:100%;margin-bottom:8px;justify-content:space-between">
+        <a href="${escArchDicyt(m.drive_url)}" target="_blank" style="text-decoration:none;color:var(--texto)">
+          📎 <strong>${escArchDicyt(m.titulo)}</strong><br><span style="font-size:11px;color:var(--texto3)">${escArchDicyt(destino)} · ${escArchDicyt(m.nombre_archivo)}</span>
+        </a>
+        <span class="chip-x" style="cursor:pointer" onclick="borrarArchivoDicytEstudiantes('${escArchDicyt(m.id)}')">×</span>
+      </div>`;
+    }).join('');
+  } catch(e){
+    cont.innerHTML='<span style="font-size:12px;color:var(--rojo)">No se pudo cargar la lista de archivos.</span>';
+  }
+}
+
+async function subirArchivoDicytEstudiantes(){
+  const input=document.getElementById('dar-archivo');
+  let file=input.files[0];
+  if(!file){ toast('Elegí un archivo','err'); return; }
+  const cid=document.getElementById('dar-curso').value;
+  if(!cid){ toast('Elegí un curso','err'); return; }
+
+  const btn=document.getElementById('dar-btn');
+  btn.disabled=true; btn.textContent='Subiendo…';
+  try {
+    file=await comprimirImagenSiCorresponde(file);
+    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
+    const archivoBase64=await leerArchivoBase64(file);
+    await api('subirMaterial',{
+      ciclo:cicloActual,cursoId:cid,alumnoId:document.getElementById('dar-alumno').value||'',
+      docenteDni:'DICYT',docenteNombre:sesion.nombre,
+      materia:MATERIA_DICYT,anio:anioDeCurso(cid),cuatrimestre:document.getElementById('dar-cuatri').value,
+      titulo:document.getElementById('dar-titulo').value.trim(),
+      archivoBase64,nombreArchivo:file.name,mimeType:file.type,
+    });
+    toast('Archivo subido ✓');
+    document.getElementById('dar-titulo').value='';
+    input.value='';
+    await cargarListaArchivosDicyt();
+  } catch(e){
+    toast('No se pudo subir: '+e.message,'err');
+  } finally {
+    btn.disabled=false; btn.textContent='📎 Subir archivo';
+  }
+}
+
+async function borrarArchivoDicytEstudiantes(id){
+  if(!confirm('¿Borrar este archivo? Los estudiantes dejarán de verlo.')) return;
+  try {
+    await api('eliminarMaterial',{id});
+    toast('Archivo borrado ✓');
+    await cargarListaArchivosDicyt();
+  } catch(e){
+    toast('No se pudo borrar: '+e.message,'err');
+  }
+}
+
+// =====================================================================
 // SITUACIONES ESPECIALES — PPAT y Prisión Domiciliaria
 // =====================================================================
 // Cache en memoria: alumno_id -> {curso_id, ppat, prision_domiciliaria, observaciones}
@@ -3726,7 +3858,7 @@ async function cargarSituacionesDicyt(){
   const cid=document.getElementById('dicyt-sit-curso').value;
   const lista=document.getElementById('dicyt-sit-lista');
   lista.innerHTML='<div class="loading"><div class="spinner"></div>Cargando…</div>';
-  await Promise.all([cargarSituaciones(true), cargarSeguimientos(true)]);
+  await Promise.all([cargarSituaciones(true), cargarSeguimientos(true), cargarOcultosDicyt()]);
   const alumnos=(cid?alumnosDeCurso(cid):ALUMNOS_RAW.slice())
     .slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
 
@@ -3739,10 +3871,13 @@ async function cargarSituacionesDicyt(){
     const s=situacionesCache[a.id]||{};
     const obs=(s.observaciones||'').replace(/"/g,'&quot;');
     const tel=(s.telefono_contacto||'').replace(/"/g,'&quot;');
-    return `<div class="situ-card" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
+    return `<div class="situ-card" data-card="${a.id}" style="border:1px solid var(--borde);border-radius:var(--radius);padding:12px;margin-bottom:10px">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px">
         <div class="td-nombre" style="font-weight:600">${a.nombre}${cid?'':`<div style="font-size:10px;color:var(--texto3);font-weight:400">${cursoNombre(a.curso)}</div>`}</div>
-        <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(a.id, tel)}</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-shrink:0">
+          <div id="dicyt-sit-wa-${a.id}">${waButtonHTML(a.id, tel)}</div>
+          <button class="btn btn-secondary btn-sm no-print" id="dicyt-sit-ocultar-${a.id}" onclick="alternarOcultoDicyt('${a.id}')"></button>
+        </div>
       </div>
       <div style="display:flex;gap:18px;margin-bottom:10px">
         <label style="display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer"><input type="checkbox" data-tipo="ppat" data-id="${a.id}" ${s.ppat?'checked':''}> PPAT</label>
@@ -3761,6 +3896,56 @@ async function cargarSituacionesDicyt(){
       </div>
     </div>`;
   }).join('');
+  aplicarOcultosDicyt();
+}
+
+// ---- Ocultar alumnos que dejaron de asistir (solo cambia lo que ve Dicyt) ----
+// Se guarda en la planilla (hoja OcultosDicyt), así se sincroniza entre dispositivos. No borra ni modifica ningún dato:
+// el alumno oculto sigue figurando en informes, notas y demás pantallas.
+let dicyMostrarOcultos=false;
+let ocultosDicytCache=new Set();
+async function cargarOcultosDicyt(){
+  try {
+    const ids=await api('getOcultosDicyt',{ciclo:cicloActual});
+    ocultosDicytCache=new Set((ids||[]).map(String));
+  } catch(e){
+    toast('No se pudieron cargar los alumnos ocultos','err');
+  }
+}
+function leerOcultosDicyt(){ return ocultosDicytCache; }
+async function alternarOcultoDicyt(id){
+  const sid=String(id);
+  const ocultar=!ocultosDicytCache.has(sid);
+  if(ocultar) ocultosDicytCache.add(sid); else ocultosDicytCache.delete(sid);
+  aplicarOcultosDicyt();
+  try {
+    await api('setOcultoDicyt',{ciclo:cicloActual,alumnoId:sid,oculto:ocultar,por:sesion.nombre});
+  } catch(e){
+    if(ocultar) ocultosDicytCache.delete(sid); else ocultosDicytCache.add(sid);
+    aplicarOcultosDicyt();
+    toast('No se pudo guardar. Reintentá.','err');
+  }
+}
+function alternarVerOcultosDicyt(){
+  dicyMostrarOcultos=!dicyMostrarOcultos;
+  aplicarOcultosDicyt();
+}
+function aplicarOcultosDicyt(){
+  const set=leerOcultosDicyt();
+  let ocultosEnLista=0;
+  document.querySelectorAll('#dicyt-sit-lista .situ-card').forEach(card=>{
+    const id=card.dataset.card;
+    const oculto=set.has(String(id));
+    if(oculto) ocultosEnLista++;
+    card.style.display=(oculto&&!dicyMostrarOcultos)?'none':'';
+    card.style.opacity=oculto?'0.55':'';
+    const btn=document.getElementById('dicyt-sit-ocultar-'+id);
+    if(btn) btn.textContent=oculto?'👁 Mostrar':'🙈 Ocultar';
+  });
+  const bar=document.getElementById('dicyt-sit-ocultos-bar');
+  if(!bar) return;
+  if(!ocultosEnLista){ bar.innerHTML=''; dicyMostrarOcultos=false; return; }
+  bar.innerHTML=`<button class="btn btn-secondary btn-sm" onclick="alternarVerOcultosDicyt()">${dicyMostrarOcultos?'🙈 Volver a ocultar':'👁 Ver ocultos'} (${ocultosEnLista})</button>`;
 }
 
 // =====================================================================
