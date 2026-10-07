@@ -246,6 +246,35 @@ tr:hover td{background:#fafaf8}
 .materia-item .mi-nombre{font-size:13px;font-weight:500}
 .materia-item .mi-meta{font-size:11px;color:var(--texto3);margin-top:1px}
 
+/* ===== INFORME DE SEGUIMIENTO DICYT ===== */
+.iseg-wrap{font-size:13px;color:var(--texto)}
+.iseg-head{text-align:center;margin:4px 0 12px}
+.iseg-head .t1{font-size:12px;letter-spacing:.5px;text-transform:uppercase;color:var(--texto2)}
+.iseg-head .t2{font-size:19px;font-weight:700;margin:2px 0}
+.iseg-head .t3{font-size:12px;color:var(--texto2)}
+.iseg-banner{border:1px solid var(--borde);border-radius:8px;padding:8px 10px;font-size:12px;margin-bottom:10px}
+.iseg-tabla{width:100%;border-collapse:collapse;font-size:12px;margin:6px 0 10px}
+.iseg-tabla th,.iseg-tabla td{border:1px solid var(--borde);padding:4px 6px;text-align:left;vertical-align:top}
+.iseg-tabla th{background:#f1f1f1;font-size:11px}
+.iseg-tabla td.c,.iseg-tabla th.c{text-align:center}
+.iseg-alumno{border:1px solid var(--borde);border-radius:10px;padding:12px;margin-bottom:12px;background:#fff;break-inside:avoid;page-break-inside:avoid}
+.iseg-alumno h3{margin:0 0 2px;font-size:15px}
+.iseg-sub{font-size:11px;color:var(--texto3);margin-bottom:8px}
+.iseg-sec{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin:10px 0 3px}
+.iseg-mal{color:var(--rojo);font-weight:700}
+.iseg-chip{display:inline-block;padding:1px 8px;border-radius:10px;font-size:11px;font-weight:600;border:1px solid var(--borde);margin-right:4px}
+.iseg-seg{padding:5px 0;border-top:1px dashed var(--borde)}
+.iseg-seg:first-child{border-top:none}
+.iseg-pie{font-size:10px;color:var(--texto3);text-align:center;margin-top:10px}
+@media print{
+  .iseg-wrap{font-size:10.5px}
+  .iseg-alumno{border:1px solid #888;border-radius:0;padding:8px 10px;margin-bottom:8px}
+  .iseg-tabla th{background:#e6e6e6!important;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .iseg-tabla th,.iseg-tabla td{border:1px solid #444;font-size:10px}
+  .iseg-mal{color:#b00000!important}
+  .iseg-resumen{break-after:page;page-break-after:always}
+}
+
 /* ===== PRINT RITE (documento oficial fiel) ===== */
 @media print{
   body{background:white!important;font-family:'Times New Roman',serif;font-size:11px;color:#000}
@@ -714,6 +743,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Situaciones especiales</div>
       <div class="mc-desc">Informe de PPAT y Prisión domiciliaria</div>
     </button>
+    <button class="menu-card" onclick="go('s-informe-seguimiento','')">
+      <div class="mc-icon">📄</div>
+      <div class="mc-title">Informe de seguimiento Dicyt</div>
+      <div class="mc-desc">PDF por curso o por alumno</div>
+    </button>
     <button class="menu-card" id="mc-dashboard-situaciones" style="display:none" onclick="go('s-dashboard-situaciones','')">
       <div class="mc-icon">📊</div>
       <div class="mc-title">Panorama de situaciones</div>
@@ -874,6 +908,11 @@ tr:hover td{background:#fafaf8}
       <div class="mc-title">Subir archivos a alumnos</div>
       <div class="mc-desc">Material para un alumno o todo el curso</div>
     </button>
+    <button class="menu-card" onclick="go('s-informe-seguimiento','')">
+      <div class="mc-icon">📄</div>
+      <div class="mc-title">Informe de seguimiento</div>
+      <div class="mc-desc">PDF por curso o por alumno</div>
+    </button>
     <button class="menu-card" onclick="go('s-calendario-ver','')">
       <div class="mc-icon">📅</div>
       <div class="mc-title">Calendario</div>
@@ -976,6 +1015,26 @@ tr:hover td{background:#fafaf8}
   <div id="dash-sit-content"></div>
 </div>
 
+<!-- ============ INFORME DE SEGUIMIENTO DICYT (PDF) — dicyt / preceptor / directivo ============ -->
+<div class="screen" id="s-informe-seguimiento">
+  <div class="nav no-print">
+    <button class="back-btn" onclick="go(sesion&&sesion.rol==='dicyt'?'s-menu-dicyt':'s-menu-prec','')">←</button>
+    <div class="nav-info"><div class="nt">Informe de seguimiento Dicyt</div><div class="ns">Por curso o por alumno · PDF</div></div>
+  </div>
+  <div class="card no-print">
+    <div class="info-box">📄 Genera un informe con situación (PPAT / Prisión domiciliaria), asistencia, notas y los informes de seguimiento de Dicyt. Para guardarlo como PDF: tocá "Imprimir / Guardar PDF" y elegí "Guardar como PDF" como destino.</div>
+    <div class="field-row">
+      <div class="field"><label>Curso</label><select id="iseg-curso" onchange="poblarAlumnosInformeSeg()"></select></div>
+      <div class="field"><label>Alumnos/as</label><select id="iseg-alumno"></select></div>
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+      <button class="btn btn-primary btn-sm" id="iseg-btn-generar" onclick="generarInformeSeguimiento()">📄 Generar informe</button>
+      <button class="btn btn-secondary btn-sm" id="iseg-btn-print" style="display:none" onclick="window.print()">🖨 Imprimir / Guardar PDF</button>
+    </div>
+  </div>
+  <div id="iseg-content"></div>
+</div>
+
 </div><!-- /app -->
 
 <script>
@@ -994,6 +1053,33 @@ async function api(action, body = {}) {
   const json = await res.json();
   if (!json.ok) throw new Error(json.error || 'Error de API');
   return json.data;
+}
+
+// --- Solo para CONSULTAS (nunca para guardar): reintenta si se corta la conexión ---
+function esErrorDeRed(e){
+  const m=String((e&&e.message)||e||'');
+  return (e instanceof TypeError)||/Failed to fetch|NetworkError|Load failed|ERR_CONNECTION/i.test(m);
+}
+async function apiGetLectura(action, params = {}) {
+  const qs=new URLSearchParams({ action, ...params }).toString();
+  const res = await fetch(API_URL + '?' + qs);
+  const json = await res.json();
+  if (!json.ok) throw new Error(json.error || 'Error de API');
+  return json.data;
+}
+async function apiLecturaConReintento(action, params = {}) {
+  const esperas=[0,1500,3000];          // 3 intentos: POST, GET, GET
+  let ultimoError;
+  for (let i=0;i<esperas.length;i++){
+    if (esperas[i]) await new Promise(r=>setTimeout(r,esperas[i]));
+    try {
+      return i===0 ? await api(action, params) : await apiGetLectura(action, params);
+    } catch(e){
+      ultimoError=e;
+      if (!esErrorDeRed(e)) throw e;     // error "de verdad" del backend: no reintentar
+    }
+  }
+  throw ultimoError;
 }
 
 // =====================================================================
@@ -1336,6 +1422,7 @@ function go(screenId, arg){
     's-materiales-doc':setupMaterialesDoc,
     's-materiales-ver':setupMaterialesVer,
     's-materiales-dicyt':setupMaterialesDicyt,
+    's-informe-seguimiento':setupInformeSeguimiento,
     's-calendario-ver':setupCalendarioVer,
     's-calendario-doc':setupCalendarioDoc,
     's-menu-prec':setupMenuPrec,
@@ -3969,13 +4056,15 @@ async function verAsistenciaDicyt(alumnoId){
   try {
     const alumno=ALUMNOS_RAW.find(al=>al.id===alumnoId);
     const cid=cursoDeAlumno(alumnoId);
-    const stats=await api('getAsistenciaAlumno',{nombreAlumno:alumno?alumno.nombre:'',cursoId:cid});
+    const stats=await apiLecturaConReintento('getAsistenciaAlumno',{nombreAlumno:alumno?alumno.nombre:'',cursoId:cid});
     asistenciaCache[alumnoId]=stats;
     cont.innerHTML=asistenciaResumenHTML(alumnoId, stats);
   } catch(e){
     console.error('Asistencia:', e);
-    const msg=String((e&&e.message)||e||'').replace(/</g,'&lt;');
-    cont.innerHTML='<span style="font-size:11px;color:var(--rojo)">No se pudo consultar la asistencia: '+msg+'</span>';
+    const msg=esErrorDeRed(e)
+      ? 'se cortó la conexión con el servidor. Probá de nuevo en unos segundos (o con otra red/Wi-Fi).'
+      : String((e&&e.message)||e||'').replace(/</g,'&lt;');
+    cont.innerHTML='<span style="font-size:11px;color:var(--rojo)">No se pudo consultar la asistencia: '+msg+'</span> <button class="btn btn-secondary btn-sm" onclick="verAsistenciaDicyt(\''+alumnoId+'\')">Reintentar</button>';
   }
 }
 function asistenciaResumenHTML(alumnoId, stats){
@@ -4214,6 +4303,233 @@ async function mostrarSituacionesInforme(){
           ${legajoItems || '<div style="font-size:12px;color:var(--texto3)">Sin documentos cargados</div>'}
         </div>
       </div>`;}).join('')}`;
+}
+
+// =====================================================================
+// INFORME DE SEGUIMIENTO DICYT — PDF por curso o por alumno
+// Reúne: situación (PPAT / Prisión domiciliaria / observaciones), asistencia,
+// notas (cierres, recuperatorios, proyecto) y los informes de seguimiento.
+// Se imprime con window.print() → "Guardar como PDF". Solo lectura: no modifica datos.
+// =====================================================================
+function escInforme(t){
+  return String(t==null?'':t).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});
+}
+
+function setupInformeSeguimiento(){
+  poblaCursoSel('iseg-curso');
+  poblarAlumnosInformeSeg();
+  document.getElementById('iseg-content').innerHTML='';
+  document.getElementById('iseg-btn-print').style.display='none';
+}
+
+function poblarAlumnosInformeSeg(){
+  const cursoId=document.getElementById('iseg-curso').value;
+  const sel=document.getElementById('iseg-alumno');
+  const alumnos=alumnosDeCurso(cursoId).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  sel.innerHTML='<option value="">Con situación o seguimiento</option><option value="__todos__">Todo el curso</option>'+
+    alumnos.map(a=>'<option value="'+escInforme(a.id)+'">'+escInforme(a.nombre)+'</option>').join('');
+  document.getElementById('iseg-content').innerHTML='';
+  document.getElementById('iseg-btn-print').style.display='none';
+}
+
+// Asistencia de la lista de alumnos. Usa la consulta por curso (1 sola lectura de la hoja);
+// si el backend todavía no la tiene, cae a consultar alumno por alumno.
+async function obtenerAsistenciaInforme(cursoId, lista, progreso){
+  const out={}; let fallos=0;
+  const nombres=lista.map(a=>a.nombre);
+  let mapa=null, sinAccion=false;
+  for(let i=0;i<2&&!mapa;i++){
+    try { mapa=await api('getAsistenciaCurso',{cursoId,nombres}); }
+    catch(e){
+      if(/Acci[oó]n desconocida/i.test(String((e&&e.message)||''))){ sinAccion=true; break; }
+      if(!esErrorDeRed(e)) break;
+      await new Promise(r=>setTimeout(r,1500));
+    }
+  }
+  if(mapa){
+    lista.forEach(a=>{ out[a.id]=mapa[a.nombre]||{q1:null,q2:null}; });
+    return {datos:out, fallos:0};
+  }
+  // Respaldo: uno por uno
+  for(let i=0;i<lista.length;i++){
+    const a=lista[i];
+    if(progreso) progreso('Consultando asistencia '+(i+1)+' de '+lista.length+'…');
+    try { out[a.id]=await apiLecturaConReintento('getAsistenciaAlumno',{nombreAlumno:a.nombre,cursoId}); }
+    catch(e){ out[a.id]=null; fallos++; }
+  }
+  return {datos:out, fallos};
+}
+
+function notaNumInforme(n){ const x=parseFloat(String(n).replace(',','.')); return isNaN(x)?null:x; }
+function promedioInforme(arr){
+  const v=arr.map(notaNumInforme).filter(x=>x!==null);
+  return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length*100)/100:null;
+}
+function celdaNotaInforme(n){
+  if(n===undefined||n===null||n==='') return '—';
+  const x=notaNumInforme(n);
+  return (x!==null&&x<7)?'<span class="iseg-mal">'+escInforme(n)+'</span>':escInforme(n);
+}
+function textoAsistInforme(st){
+  if(!st) return 'Sin registros';
+  return st.asistidas+' de '+st.dias+' días ('+st.pct+'%)';
+}
+
+async function generarInformeSeguimiento(){
+  const cursoId=document.getElementById('iseg-curso').value;
+  const modo=document.getElementById('iseg-alumno').value;
+  const cont=document.getElementById('iseg-content');
+  const btnPrint=document.getElementById('iseg-btn-print');
+  const btnGen=document.getElementById('iseg-btn-generar');
+  if(!cursoId){ toast('Elegí un curso','err'); return; }
+  btnPrint.style.display='none';
+  btnGen.disabled=true;
+  cont.innerHTML='<div class="loading"><div class="spinner"></div><span id="iseg-prog">Reuniendo datos…</span></div>';
+  const progreso=t=>{ const el=document.getElementById('iseg-prog'); if(el) el.textContent=t; };
+  try {
+    const res=await Promise.all([
+      cargarSituaciones(true),
+      cargarSeguimientos(true),
+      api('getRiteCurso',{ciclo:cicloActual,cursoId}),
+    ]);
+    const rite=res[2]||{};
+
+    let alumnos=alumnosDeCurso(cursoId).slice().sort((a,b)=>a.nombre.localeCompare(b.nombre));
+    if(modo===''){
+      alumnos=alumnos.filter(a=>{
+        const s=situacionesCache[a.id];
+        return (s&&(s.ppat||s.prision_domiciliaria||s.observaciones))||((seguimientosCache[a.id]||[]).length>0);
+      });
+    } else if(modo!=='__todos__'){
+      alumnos=alumnos.filter(a=>String(a.id)===String(modo));
+    }
+    if(!alumnos.length){
+      cont.innerHTML='<div class="empty">No hay alumnos/as con situación especial o informes de seguimiento en este curso. Elegí "Todo el curso" para ver a todos.</div>';
+      return;
+    }
+
+    progreso('Consultando asistencia…');
+    const asis=await obtenerAsistenciaInforme(cursoId, alumnos, progreso);
+
+    cont.innerHTML=construirInformeSeguimiento(cursoId, alumnos, rite, asis);
+    btnPrint.style.display='';
+  } catch(e){
+    console.error('Informe seguimiento:', e);
+    cont.innerHTML='<div class="empty" style="color:var(--rojo)">No se pudo generar el informe: '+escInforme(esErrorDeRed(e)?'se cortó la conexión con el servidor. Probá de nuevo.':((e&&e.message)||e))+'</div>';
+  } finally {
+    btnGen.disabled=false;
+  }
+}
+
+function construirInformeSeguimiento(cursoId, alumnos, rite, asis){
+  const cierres=rite.cierres||[], recups=rite.recups||[], proyectos=rite.proyectos||[];
+  const hoy=new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
+  const emisor=sesion?((sesion.nombre||'')+(sesion.rol?' ('+sesion.rol+')':'')):'';
+
+  // Datos calculados por alumno
+  const info=alumnos.map(a=>{
+    const id=String(a.id);
+    const sit=situacionesCache[a.id]||{};
+    const segs=(seguimientosCache[a.id]||[]).slice().sort((x,y)=>String(x.fecha||'').localeCompare(String(y.fecha||'')));
+    const cie=cierres.filter(r=>String(r.alumno_id)===id);
+    const rec=recups.filter(r=>String(r.alumno_id)===id);
+    const pro=proyectos.filter(r=>String(r.alumno_id)===id);
+    const porMateria={};
+    cie.forEach(r=>{
+      const m=r.materia||'(sin materia)';
+      if(!porMateria[m]) porMateria[m]={};
+      porMateria[m][String(r.cuatrimestre)]=r.nota;
+    });
+    const notasQ=q=>cie.filter(r=>String(r.cuatrimestre)===q).map(r=>r.nota);
+    const desaprob=cie.filter(r=>{const x=notaNumInforme(r.nota);return x!==null&&x<7;}).length;
+    return {a,sit,segs,rec,pro,porMateria,promQ1:promedioInforme(notasQ('1')),promQ2:promedioInforme(notasQ('2')),desaprob,
+            asist:(asis.datos||{})[a.id]||null};
+  });
+
+  const nPpat=info.filter(i=>i.sit.ppat).length;
+  const nPris=info.filter(i=>i.sit.prision_domiciliaria).length;
+
+  let html='<div class="iseg-wrap">';
+  html+='<div class="iseg-head"><div class="t1">CENS Nº 451 · Ciclo lectivo '+escInforme(cicloActual)+'</div>'+
+        '<div class="t2">Informe de seguimiento — Dicyt</div>'+
+        '<div class="t3">'+escInforme(cursoNombre(cursoId))+' · Emitido el '+hoy+(emisor?' · '+escInforme(emisor):'')+'</div></div>';
+
+  if(asis.fallos){
+    html+='<div class="iseg-banner">⚠ No se pudo obtener la asistencia de '+asis.fallos+' alumno(s)/a(s); figura como "Sin registros".</div>';
+  }
+
+  // Resumen del curso (si hay más de un alumno)
+  if(info.length>1){
+    html+='<div class="iseg-resumen">';
+    html+='<div class="iseg-sec">Resumen — '+info.length+' alumno(s)/as · PPAT: '+nPpat+' · Prisión domiciliaria: '+nPris+'</div>';
+    html+='<table class="iseg-tabla"><thead><tr><th>Alumno/a</th><th class="c">PPAT</th><th class="c">Prisión dom.</th><th class="c">Asist. 1°C</th><th class="c">Asist. 2°C</th><th class="c">Prom. 1°C</th><th class="c">Prom. 2°C</th><th class="c">Desaprob.</th></tr></thead><tbody>';
+    info.forEach(i=>{
+      const as=i.asist||{};
+      html+='<tr><td>'+escInforme(i.a.nombre)+'</td>'+
+        '<td class="c">'+(i.sit.ppat?'Sí':'No')+'</td>'+
+        '<td class="c">'+(i.sit.prision_domiciliaria?'Sí':'No')+'</td>'+
+        '<td class="c">'+(as.q1?as.q1.pct+'%':'—')+'</td>'+
+        '<td class="c">'+(as.q2?as.q2.pct+'%':'—')+'</td>'+
+        '<td class="c">'+(i.promQ1!==null?i.promQ1:'—')+'</td>'+
+        '<td class="c">'+(i.promQ2!==null?i.promQ2:'—')+'</td>'+
+        '<td class="c">'+(i.desaprob?'<span class="iseg-mal">'+i.desaprob+'</span>':'0')+'</td></tr>';
+    });
+    html+='</tbody></table></div>';
+  }
+
+  // Detalle por alumno
+  info.forEach(i=>{
+    const as=i.asist||{};
+    html+='<div class="iseg-alumno">';
+    html+='<h3>'+escInforme(i.a.nombre)+'</h3><div class="iseg-sub">'+escInforme(cursoNombre(cursoId))+'</div>';
+
+    html+='<div class="iseg-sec">Situación</div>';
+    html+='<div><span class="iseg-chip">PPAT: '+(i.sit.ppat?'Sí':'No')+'</span>'+
+          '<span class="iseg-chip">Prisión domiciliaria: '+(i.sit.prision_domiciliaria?'Sí':'No')+'</span></div>';
+    if(i.sit.ppat&&i.sit.ppat_archivo_nombre) html+='<div style="margin-top:4px">Archivo PPAT: '+escInforme(i.sit.ppat_archivo_nombre)+'</div>';
+    if(i.sit.observaciones) html+='<div style="margin-top:4px;white-space:pre-wrap">'+escInforme(i.sit.observaciones)+'</div>';
+
+    html+='<div class="iseg-sec">Asistencia</div>';
+    html+='<table class="iseg-tabla"><thead><tr><th>1° Cuatrimestre</th><th>2° Cuatrimestre</th></tr></thead><tbody><tr><td>'+
+          escInforme(textoAsistInforme(as.q1))+'</td><td>'+escInforme(textoAsistInforme(as.q2))+'</td></tr></tbody></table>';
+
+    html+='<div class="iseg-sec">Notas</div>';
+    const materias=Object.keys(i.porMateria).sort((x,y)=>x.localeCompare(y));
+    if(materias.length){
+      html+='<table class="iseg-tabla"><thead><tr><th>Materia</th><th class="c">1° Cuatrimestre</th><th class="c">2° Cuatrimestre</th></tr></thead><tbody>';
+      materias.forEach(m=>{
+        html+='<tr><td>'+escInforme(m)+'</td><td class="c">'+celdaNotaInforme(i.porMateria[m]['1'])+'</td><td class="c">'+celdaNotaInforme(i.porMateria[m]['2'])+'</td></tr>';
+      });
+      html+='<tr><td><b>Promedio</b></td><td class="c"><b>'+(i.promQ1!==null?i.promQ1:'—')+'</b></td><td class="c"><b>'+(i.promQ2!==null?i.promQ2:'—')+'</b></td></tr>';
+      html+='</tbody></table>';
+    } else {
+      html+='<div style="color:var(--texto3);font-size:12px">Sin notas de cierre cargadas.</div>';
+    }
+    if(i.rec.length){
+      html+='<div style="font-size:12px;margin-bottom:4px"><b>Recuperatorios:</b> '+i.rec.map(r=>
+        escInforme(r.materia)+' ('+escInforme(r.cuatrimestre)+'°C'+(r.turno?', '+escInforme(r.turno):'')+'): '+celdaNotaInforme(r.nota)).join(' · ')+'</div>';
+    }
+    if(i.pro.length){
+      html+='<div style="font-size:12px"><b>Proyecto:</b> '+i.pro.map(r=>escInforme(r.cuatrimestre)+'°C: '+celdaNotaInforme(r.nota)).join(' · ')+'</div>';
+    }
+
+    html+='<div class="iseg-sec">Seguimiento Dicyt</div>';
+    if(i.segs.length){
+      html+=i.segs.map(sg=>
+        '<div class="iseg-seg"><div style="font-weight:600">'+escInforme(sg.titulo||'Informe de situación')+
+        ' <span style="font-weight:400;color:var(--texto3)">('+escInforme(fechaCorta(sg.fecha))+(sg.cargado_por?' · '+escInforme(sg.cargado_por):'')+')</span></div>'+
+        (sg.contenido?'<div style="white-space:pre-wrap;margin-top:2px">'+escInforme(sg.contenido)+'</div>':'')+
+        (sg.archivo_nombre?'<div style="color:var(--texto2);margin-top:2px">Adjunto: '+escInforme(sg.archivo_nombre)+'</div>':'')+
+        '</div>').join('');
+    } else {
+      html+='<div style="color:var(--texto3);font-size:12px">Sin informes de seguimiento cargados.</div>';
+    }
+    html+='</div>';
+  });
+
+  html+='<div class="iseg-pie">Documento reservado: contiene información sensible de estudiantes. Uso interno institucional.</div>';
+  html+='</div>';
+  return html;
 }
 
 // =====================================================================
