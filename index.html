@@ -536,10 +536,10 @@ tr:hover td{background:#fafaf8}
     <div class="nav-info"><div class="nt">Material de estudio</div><div class="ns" id="mat-doc-sub"></div></div>
   </div>
   <div class="card">
-    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Las imágenes se comprimen automáticamente antes de subir para ocupar menos espacio. Elegí "Todo el curso" o un alumno puntual (por ejemplo, para quien no puede asistir).</div>
+    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Las imágenes se comprimen automáticamente antes de subir para ocupar menos espacio. Elegí "Todo el curso" o un alumno puntual (por ejemplo, para quien no puede asistir). Podés seleccionar varios archivos juntos: se suben uno por uno.</div>
     <div class="field"><label>Para</label><select id="mat-doc-alumno"></select></div>
     <div class="field"><label>Título (opcional)</label><input type="text" id="mat-doc-titulo" placeholder="Ej: Guía de ejercicios unidad 2"></div>
-    <div class="field"><label>Archivo</label><input type="file" id="mat-doc-archivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
+    <div class="field"><label>Archivo(s) — podés elegir varios a la vez</label><input type="file" id="mat-doc-archivo" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
     <button class="btn btn-primary" style="margin-top:4px" onclick="subirMaterialDoc()" id="mat-doc-btn">📎 Subir material</button>
   </div>
   <div class="card">
@@ -593,14 +593,14 @@ tr:hover td{background:#fafaf8}
     <div class="nav-info"><div class="nt">Subir archivos a alumnos</div><div class="ns">Lo ve el alumno en su perfil → Material</div></div>
   </div>
   <div class="card">
-    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Elegí un alumno puntual o todo el curso. Aparece en la pestaña "Material" del perfil del alumno, bajo "Dicyt".</div>
+    <div class="info-box">ℹ Archivos adjuntos (PDF, Word, imágenes) hasta 8 MB. Elegí un alumno puntual o todo el curso. Podés seleccionar varios archivos juntos: se suben uno por uno. Aparecen en la pestaña "Material" del perfil del alumno, bajo "Dicyt".</div>
     <div class="field"><label>Curso</label><select id="md-curso-sel" onchange="poblarAlumnosMatDicyt();cargarListaMaterialesDicyt()"></select></div>
     <div class="field"><label>Para</label><select id="md-alumno-sel"></select></div>
     <div class="field"><label>Cuatrimestre</label>
       <select id="md-cuatri"><option value="1">1° Cuatrimestre</option><option value="2">2° Cuatrimestre</option></select>
     </div>
     <div class="field"><label>Título (opcional)</label><input type="text" id="md-titulo" placeholder="Ej: Guía de actividades"></div>
-    <div class="field"><label>Archivo</label><input type="file" id="md-archivo" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
+    <div class="field"><label>Archivo(s) — podés elegir varios a la vez</label><input type="file" id="md-archivo" multiple accept=".pdf,.doc,.docx,.png,.jpg,.jpeg,.gif,.webp"></div>
     <button class="btn btn-primary" style="margin-top:4px" onclick="subirMaterialDicyt()" id="md-btn">📎 Subir archivo</button>
   </div>
   <div class="card">
@@ -1196,14 +1196,14 @@ function notaBadge(nota){
   if(n>=7) return `<span class="badge badge-apr">${n}</span>`;
   return `<span class="badge badge-pen">${n}</span>`;
 }
-function toast(msg, tipo='ok'){
+function toast(msg, tipo='ok', ms=2800){
   const old=document.querySelector('.toast');
   if(old) old.remove();
   const t=document.createElement('div');
   t.className='toast'+(tipo==='err'?' err':'');
   t.textContent=msg;
   document.body.appendChild(t);
-  setTimeout(()=>t.remove(),2800);
+  setTimeout(()=>t.remove(),ms);
 }
 function hoy(){
   return new Date().toLocaleDateString('es-AR',{day:'2-digit',month:'2-digit',year:'numeric'});
@@ -2031,34 +2031,79 @@ function comprimirImagenSiCorresponde(file){
   });
 }
 
-async function subirMaterialDoc(){
-  const input=document.getElementById('mat-doc-archivo');
-  let file=input.files[0];
-  if(!file){ toast('Elegí un archivo','err'); return; }
+// =====================================================================
+// SUBIDA DE VARIOS ARCHIVOS A LA VEZ (docente y Dicyt)
+// Se suben de a uno (secuencial) para no saturar el servidor. Si alguno falla, los demás
+// igual se suben y los que fallaron quedan seleccionados para reintentar.
+// =====================================================================
+function nombreSinExtension(n){ return String(n||'').replace(/\.[^.]+$/,''); }
 
-  const btn=document.getElementById('mat-doc-btn');
-  btn.disabled=true; btn.textContent='Subiendo…';
+async function subirArchivosEnLote(opts){
+  const input=opts.input, btn=opts.btn;
+  const archivos=Array.from(input.files||[]);
+  if(!archivos.length){ toast('Elegí al menos un archivo','err'); return; }
+  const tituloBase=(opts.titulo||'').trim();
+  const n=archivos.length;
+  const fallidos=[]; let ok=0;
+  btn.disabled=true;
   try {
-    file=await comprimirImagenSiCorresponde(file);
-    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
-    const archivoBase64=await leerArchivoBase64(file);
-    const alumnoId=document.getElementById('mat-doc-alumno').value;
-    const titulo=document.getElementById('mat-doc-titulo').value.trim();
-    await api('subirMaterial',{
+    for(let i=0;i<n;i++){
+      btn.textContent=n>1?('Subiendo '+(i+1)+' de '+n+'…'):'Subiendo…';
+      let file=archivos[i];
+      const original=file;
+      try {
+        file=await comprimirImagenSiCorresponde(file);
+        if(file.size>MATERIAL_MAX_BYTES) throw new Error('supera los 8 MB');
+        const archivoBase64=await leerArchivoBase64(file);
+        const titulo=(n>1&&tituloBase)?(tituloBase+' – '+nombreSinExtension(file.name)):tituloBase;
+        await api('subirMaterial', opts.armarBody({titulo,archivoBase64,nombreArchivo:file.name,mimeType:file.type}));
+        ok++;
+      } catch(e){
+        fallidos.push({file:original,motivo:String((e&&e.message)||e)});
+      }
+    }
+  } finally {
+    btn.disabled=false; btn.textContent=opts.textoBtn;
+  }
+
+  // Dejar seleccionados solo los que fallaron (para reintentar); si todo salió bien, limpiar.
+  try {
+    if(fallidos.length){
+      const dt=new DataTransfer();
+      fallidos.forEach(f=>dt.items.add(f.file));
+      input.files=dt.files;
+    } else {
+      input.value='';
+    }
+  } catch(_){ input.value=''; }
+
+  if(!fallidos.length){
+    if(opts.onTituloOk) opts.onTituloOk();
+    toast(n>1?(ok+' archivos subidos ✓'):'Archivo subido ✓');
+  } else if(ok){
+    toast('Se subieron '+ok+' de '+n+'. No se pudo subir: '+fallidos.map(f=>f.file.name+' ('+f.motivo+')').join(', ')+'. Quedaron seleccionados para reintentar.','err',7000);
+  } else {
+    toast('No se pudo subir: '+fallidos.map(f=>f.file.name+' ('+f.motivo+')').join(', '),'err',6000);
+  }
+  if(opts.alTerminar) await opts.alTerminar();
+}
+
+async function subirMaterialDoc(){
+  const alumnoId=document.getElementById('mat-doc-alumno').value;
+  await subirArchivosEnLote({
+    input:document.getElementById('mat-doc-archivo'),
+    btn:document.getElementById('mat-doc-btn'),
+    textoBtn:'📎 Subir material',
+    titulo:document.getElementById('mat-doc-titulo').value,
+    armarBody:(d)=>({
       ciclo:cicloActual,cursoId:sesion.cursoId,alumnoId:alumnoId||'',
       docenteDni:sesion.dni,docenteNombre:sesion.nombre,
       materia:sesion.materia,anio:anioDeCurso(sesion.cursoId),cuatrimestre:sesion.cuatrimestre,
-      titulo,archivoBase64,nombreArchivo:file.name,mimeType:file.type,
-    });
-    toast('Material subido ✓');
-    document.getElementById('mat-doc-titulo').value='';
-    input.value='';
-    await cargarListaMaterialesDoc();
-  } catch(e){
-    toast('No se pudo subir: '+e.message,'err');
-  } finally {
-    btn.disabled=false; btn.textContent='📎 Subir material';
-  }
+      titulo:d.titulo,archivoBase64:d.archivoBase64,nombreArchivo:d.nombreArchivo,mimeType:d.mimeType,
+    }),
+    onTituloOk:()=>{ document.getElementById('mat-doc-titulo').value=''; },
+    alTerminar:cargarListaMaterialesDoc,
+  });
 }
 
 async function borrarMaterialDoc(id){
@@ -2136,34 +2181,22 @@ async function cargarListaMaterialesDicyt(){
 async function subirMaterialDicyt(){
   const cursoId=document.getElementById('md-curso-sel').value;
   if(!cursoId){ toast('Elegí un curso','err'); return; }
-  const input=document.getElementById('md-archivo');
-  let file=input.files[0];
-  if(!file){ toast('Elegí un archivo','err'); return; }
-
-  const btn=document.getElementById('md-btn');
-  btn.disabled=true; btn.textContent='Subiendo…';
-  try {
-    file=await comprimirImagenSiCorresponde(file);
-    if(file.size>MATERIAL_MAX_BYTES) throw new Error('El archivo supera los 8 MB');
-    const archivoBase64=await leerArchivoBase64(file);
-    const alumnoId=document.getElementById('md-alumno-sel').value;
-    const titulo=document.getElementById('md-titulo').value.trim();
-    await api('subirMaterial',{
+  const alumnoId=document.getElementById('md-alumno-sel').value;
+  const cuatri=document.getElementById('md-cuatri').value;
+  await subirArchivosEnLote({
+    input:document.getElementById('md-archivo'),
+    btn:document.getElementById('md-btn'),
+    textoBtn:'📎 Subir archivo',
+    titulo:document.getElementById('md-titulo').value,
+    armarBody:(d)=>({
       ciclo:cicloActual,cursoId,alumnoId:alumnoId||'',
       docenteDni:'dicyt',docenteNombre:(sesion&&sesion.nombre)||'Dicyt',
-      materia:'Dicyt',anio:anioDeCurso(cursoId),
-      cuatrimestre:document.getElementById('md-cuatri').value,
-      titulo,archivoBase64,nombreArchivo:file.name,mimeType:file.type,
-    });
-    toast('Archivo subido ✓');
-    document.getElementById('md-titulo').value='';
-    input.value='';
-    await cargarListaMaterialesDicyt();
-  } catch(e){
-    toast('No se pudo subir: '+e.message,'err');
-  } finally {
-    btn.disabled=false; btn.textContent='📎 Subir archivo';
-  }
+      materia:'Dicyt',anio:anioDeCurso(cursoId),cuatrimestre:cuatri,
+      titulo:d.titulo,archivoBase64:d.archivoBase64,nombreArchivo:d.nombreArchivo,mimeType:d.mimeType,
+    }),
+    onTituloOk:()=>{ document.getElementById('md-titulo').value=''; },
+    alTerminar:cargarListaMaterialesDicyt,
+  });
 }
 
 async function borrarMaterialDicyt(id){
