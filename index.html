@@ -469,6 +469,7 @@ tr:hover td{background:#fafaf8}
     <div id="login-otros-fields" style="display:none">
       <div class="info-box" id="ot-aviso-asist" style="display:none"><span>ℹ <b>Preceptoría y Dirección</b> ingresan desde el botón <b>RITE</b> de la app de Asistencia, sin escribir otra clave. Si entrás directo acá, vas a necesitar una clave propia de RITE que quizás no tengas.</span></div>
       <div class="field" id="ot-nombre-wrap" style="display:none"><label>Tu nombre</label><select id="ot-nombre-sel"></select></div>
+      <div class="field" id="ot-firma-wrap" style="display:none"><label>Tu nombre y apellido (opcional)</label><input id="ot-firma" type="text" maxlength="60" placeholder="Ej: Ana Ramírez" autocomplete="name"><div style="font-size:11px;color:var(--texto3);margin-top:3px">Solo sirve para firmar lo que cargues y para que Andre te salude. La entrada la controla la contraseña.</div></div>
       <div class="field"><label>Contraseña</label><input id="ot-pass" type="password" placeholder="Clave de acceso"></div>
     </div>
     <div id="login-error" class="err-box" style="display:none">⚠ Datos incorrectos. Verificá los campos.</div>
@@ -1570,6 +1571,8 @@ function setupLogin(rol){
   document.getElementById('login-otros-fields').style.display=(rol!=='docente'&&rol!=='alumno')?'':'none';
   document.getElementById('ot-nombre-wrap').style.display=rol==='preceptor'?'':'none';
   document.getElementById('ot-aviso-asist').style.display=(rol==='preceptor'||rol==='directivo')?'':'none';
+  document.getElementById('ot-firma-wrap').style.display=(rol==='dicyt'||rol==='directivo')?'':'none';
+  const firmaEl=document.getElementById('ot-firma'); if(firmaEl) firmaEl.value='';
   const passDoc=document.getElementById('doc-pass'); if(passDoc) passDoc.value='';
   document.getElementById('ot-pass').value='';
   if(rol==='preceptor') cargarNombresPreceptores();
@@ -1603,7 +1606,8 @@ async function cargarNombresPreceptores(){
 // Después de ingresar: guarda la sesión (con el token del servidor), carga la matrícula y entra al menú
 async function completarIngreso(data, extra){
   const u=data.usuario;
-  sesion={ rol:u.rol, nombre:u.nombre, token:data.token, ...(extra||{}) };
+  const firma=(extra&&extra.firma)||'';
+  sesion={ rol:u.rol, nombre:firma||u.nombre, nombreCuenta:u.nombre, token:data.token, ...(extra||{}) };
   if(u.rol==='alumno'){
     sesion.dni=u.alumno.dni; sesion.alumno=u.alumno;
     ALUMNOS_RAW=[u.alumno];                       // el estudiante solo conoce sus propios datos
@@ -1660,7 +1664,8 @@ async function doLogin(){
     const data=await api('login',{rol,nombre,password:pass});
     loadEl.style.display='none';
     document.getElementById('ot-pass').value='';
-    await completarIngreso(data,{});
+    const firma=(rol==='dicyt'||rol==='directivo')?document.getElementById('ot-firma').value.trim().slice(0,60):'';
+    await completarIngreso(data,{firma});
   } catch(e){
     mostrarError(esErrorDeRed(e)?'No se pudo conectar con el servidor. Revisá tu internet y probá de nuevo.':e.message);
   }
