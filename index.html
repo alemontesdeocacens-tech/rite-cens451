@@ -1140,7 +1140,7 @@ tr:hover td{background:#fafaf8}
     <button onclick="asistCerrar()" aria-label="Cerrar">✕</button>
   </div>
   <div class="asist-body" id="asist-body"></div>
-  <div class="asist-nota">Soy una guía de la app: no veo datos de alumnos ni modifico nada.</div>
+  <div class="asist-nota">Consulto notas con tus mismos permisos. No modifico nada ni envío datos fuera de la app.</div>
   <div class="asist-form">
     <input id="asist-input" type="text" placeholder="Escribile a Andre… ej: subir archivos" autocomplete="off" onkeydown="if(event.key==='Enter')asistEnviar()">
     <button onclick="asistEnviar()" aria-label="Enviar">➤</button>
@@ -1173,7 +1173,7 @@ async function api(action, body = {}) {
 }
 function sesionVencida(){
   if(!sesion||!sesion.token) return;       // sin sesión abierta no hay nada que cerrar
-  sesion=null; ALUMNOS_RAW=[];
+  sesion=null; ALUMNOS_RAW=[]; asistLimpiarChat();
   toast('Tu sesión venció. Ingresá de nuevo.','err',5000);
   go('s-inicio','');
 }
@@ -1551,7 +1551,7 @@ function go(screenId, arg){
   if(handlers[screenId]) handlers[screenId]();
 }
 
-function logout(){ sesion=null; ALUMNOS_RAW=[]; pendingView=null; go('s-inicio',''); }
+function logout(){ sesion=null; ALUMNOS_RAW=[]; pendingView=null; asistLimpiarChat(); go('s-inicio',''); }
 
 // =====================================================================
 // LOGIN
@@ -1605,6 +1605,7 @@ async function cargarNombresPreceptores(){
 
 // Después de ingresar: guarda la sesión (con el token del servidor), carga la matrícula y entra al menú
 async function completarIngreso(data, extra){
+  asistLimpiarChat();      // el chat de un usuario anterior no se hereda
   const u=data.usuario;
   const firma=(extra&&extra.firma)||'';
   sesion={ rol:u.rol, nombre:firma||u.nombre, nombreCuenta:u.nombre, token:data.token, ...(extra||{}) };
@@ -4744,6 +4745,13 @@ const ASIST_KB=[
    keys:['olvide','olvido','no recuerdo','clave olvidada','recuperar','reiniciar','resetear','bloqueado','pendiente','no me aprobaron','datos incorrectos'],
    texto:'Si olvidaste tu clave, pedile a Dirección que la reinicie: te va a dar una clave temporal. Si dice que tu registro está pendiente, Dirección todavía no lo aprobó. Si dice que el acceso está bloqueado, consultalo con Dirección. Y si fallaste 5 veces, esperá 10 minutos.'},
 
+  {id:'t_andre_notas',roles:['docente','preceptor','directivo','dicyt'],titulo:'Preguntarle a Andre las notas de un alumno',pop:true,
+   keys:['notas de un alumno','consultar notas','preguntar notas','como le va a','promedio de','notas de','como viene el curso','resumen del curso','cuantos desaprobados'],
+   pasos:['Escribime, por ejemplo: "notas de Pérez" o "cómo le va a Lucía Gómez".','Si hay varios con ese nombre, elegí uno de los botones.','Podés acotar por materia ("notas de Pérez en Matemática") o pedir la asistencia ("notas y asistencia de Pérez"; solo Dirección, Preceptoría y Dicyt).','Para ver cómo viene un curso completo escribí "cómo viene el curso".','Veo lo mismo que ya ves en la app. Docentes: todas las materias del curso con el que ingresaste. Preceptoría: tus cursos. Dirección y Dicyt: todos.']},
+  {id:'t_andre_mis_notas',roles:['alumno'],titulo:'Preguntarle a Andre mis notas',pop:true,
+   keys:['mis notas','mi promedio','como voy','como me va','mis calificaciones'],
+   pasos:['Escribime "mis notas" o "cómo voy".','Te muestro tus notas por materia y cuatrimestre, tu promedio y lo que está desaprobado.','Solo puedo mostrarte tus propias notas.']},
+
   // ---------- ESTUDIANTE ----------
   {id:'t_rite',roles:['alumno'],titulo:'Ver y descargar mi RITE',pop:true,
    keys:['rite','notas','boletin','ver mis notas','descargar mi','mi rite','informe','calificaciones'],
@@ -5034,6 +5042,8 @@ function asistEnviar(){
     asistExpresion('pulgar'); asistAgregar('bot','¡De nada! Para eso estoy. Si necesitás algo más, escribime.','pulgar'); return;
   }
   if(/^(temas|ayuda|menu|opciones|que puedes hacer|que podes hacer)$/.test(q)){ asistTodos(); return; }
+  const intencionNotas=andreIntencionNotas(q);
+  if(intencionNotas){ asistPensando(function(){ andreResponderNotas(intencionNotas).catch(function(){ asistExpresion('nose'); asistAgregar('bot','No pude consultar las notas. Probá de nuevo.','nose'); }); }); return; }
   asistPensando(function(){
     const res=asistBuscar(texto,rol);
     if(!res.length){
@@ -5227,6 +5237,191 @@ async function reiniciarClaveDocenteUI(dni){
   if(nueva.length<8){ toast('La clave debe tener al menos 8 caracteres','err'); return; }
   try { await api('reiniciarClaveDocente',{dni,nueva}); toast('Clave reiniciada ✓ Le cerramos sus sesiones abiertas.','ok',5000); }
   catch(e){ toast('No se pudo reiniciar: '+e.message,'err'); }
+}
+
+// =====================================================================
+// ANDRE CONSULTA NOTAS — con los mismos permisos que ya tiene cada perfil en la app.
+// Solo lee: usa las mismas consultas que las pantallas (getRiteCurso / getRiteAlumnoCompleto).
+// Nada se envía fuera de la app y el chat se borra al cerrar sesión.
+// =====================================================================
+let andreCache={};          // { cursoId: {t, datos} } para no repetir el mismo pedido durante 2 minutos
+let andrePendiente=null;    // filtros de la consulta mientras se elige entre varios alumnos
+const ANDRE_STOP=['de','del','la','el','los','las','al','alumno','alumna','estudiante','por','favor','me','podes','podrias','decir','dame','pasame','mostrame','quiero','ver','sus','su','con','que','y'];
+const ANDRE_NO_NOMBRE=['todos','todas','alumnos','alumnas','materias','cursos','curso','mios','mias','general'];
+
+function asistLimpiarChat(){
+  andreCache={}; andrePendiente=null; asistRolMostrado=null;
+  const b=document.getElementById('asist-body'); if(b) b.innerHTML='';
+  const panel=document.getElementById('asist-panel'); if(panel&&panel.classList.contains('abierto')) asistCerrar();
+}
+
+function andreAlumnosPermitidos(rol){
+  const todos=Array.isArray(ALUMNOS_RAW)?ALUMNOS_RAW:[];
+  if(rol==='alumno') return (sesion&&sesion.alumno)?[sesion.alumno]:todos.slice(0,1);
+  if(rol==='docente') return todos.filter(a=>String(a.curso)===String(sesion&&sesion.cursoId));   // todo el curso con el que ingresó
+  if(rol==='preceptor'){ const ids=cursosVisibles().map(c=>c.id); return todos.filter(a=>ids.indexOf(a.curso)>=0); }
+  if(rol==='directivo'||rol==='dicyt') return todos;
+  return [];
+}
+
+// Devuelve {tipo:'curso'} | {tipo:'propias'} | {tipo:'alumno',tokens,materia,asistencia} | null  (q viene normalizada)
+function andreIntencionNotas(q){
+  if(/^(como|donde|que|cual|cuando|por que)\b.*\b(veo|cargo|hago|puedo|subo|genero|descargo|imprimo|guardo|se puede)\b/.test(q)) return null;   // son preguntas de "cómo se hace": las responde la guía
+  if(/\b(como (viene|anda|va|esta|se comporta|rinde)|resumen|rendimiento|situacion|notas|promedios?|desaprobados)( general)? (del |de el |el )?curso\b/.test(q)||/\bel curso en su totalidad\b/.test(q)) return {tipo:'curso'};
+  if(/\b(mis notas|mi promedio|mis calificaciones|mis materias|como voy|como me va|mi boletin)\b/.test(q)) return {tipo:'propias'};
+  let m=q.match(/\b(?:notas?|calificaciones?|promedio|boletin|rendimiento|materias (?:que )?(?:debe|adeuda|desaprobo|desaprobadas))\s+(?:de(?:l| la)?\s+)?(.+)$/);
+  if(!m) m=q.match(/\bcomo (?:le va|va|anda|viene|esta|rinde)\s+(?:a\s+|el alumno\s+|la alumna\s+)?(.+)$/);
+  if(!m) return null;
+  let resto=m[1], materia='';
+  const k=resto.indexOf(' en '); if(k>0){ materia=resto.slice(k+4).trim(); resto=resto.slice(0,k); }
+  const asistencia=/\b(asistencia|faltas|inasistencias)\b/.test(q);
+  const tokens=resto.split(' ').filter(w=>w.length>=3&&ANDRE_STOP.indexOf(w)<0&&['asistencia','faltas','inasistencias'].indexOf(w)<0);
+  if(!tokens.length||tokens.some(t=>ANDRE_NO_NOMBRE.indexOf(t)>=0)) return null;
+  return {tipo:'alumno',tokens:tokens,materia:materia,asistencia:asistencia};
+}
+
+function andreChipsHTML(items){
+  return '<div class="asist-chips">'+items.map(i=>'<button class="asist-chip" onclick="'+i.accion+'">'+asistEsc(i.texto)+'</button>').join('')+'</div>';
+}
+
+async function andreDatosCurso(cursoId){
+  const c=andreCache[cursoId];
+  if(c&&Date.now()-c.t<120000) return c.datos;
+  const datos=await api('getRiteCurso',{ciclo:cicloActual,cursoId});
+  andreCache[cursoId]={t:Date.now(),datos:datos};
+  return datos;
+}
+
+function andreDelCiclo(r){ return !r.ciclo||String(r.ciclo)===String(cicloActual); }
+
+function andreHtmlNotas(alumno,rite,filtroMateria,extra){
+  const id=String(alumno.id);
+  const propias=a=>(a||[]).filter(r=>String(r.alumno_id)===id&&andreDelCiclo(r));
+  let cie=propias(rite.cierres), rec=propias(rite.recups), pro=propias(rite.proyectos);
+  const f=asistNorm(filtroMateria||'');
+  if(f){ cie=cie.filter(r=>asistNorm(r.materia).indexOf(f)>=0); rec=rec.filter(r=>asistNorm(r.materia).indexOf(f)>=0); }
+  let h='<div class="atit">'+asistEsc(alumno.nombre)+'</div><div style="font-size:11px;color:var(--texto3)">'+asistEsc(cursoNombre(alumno.curso))+' · Ciclo '+asistEsc(cicloActual)+(f?' · Materia: '+asistEsc(filtroMateria):'')+'</div>';
+  if(!cie.length&&!rec.length&&!pro.length){
+    return h+'<div style="margin-top:6px">'+(f?'No encontré notas de esa materia para este alumno.':'Todavía no hay notas cargadas para este alumno en este ciclo.')+'</div>'+(extra||'');
+  }
+  const por={};
+  cie.forEach(r=>{ const m=r.materia||'(sin materia)'; (por[m]=por[m]||{})[String(r.cuatrimestre)]=r.nota; });
+  const celda='border:1px solid var(--borde);padding:3px 6px';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0"><thead><tr><th style="'+celda+';text-align:left">Materia</th><th style="'+celda+'">1°C</th><th style="'+celda+'">2°C</th></tr></thead><tbody>';
+  Object.keys(por).sort((a,b)=>a.localeCompare(b)).forEach(m=>{
+    h+='<tr><td style="'+celda+'">'+asistEsc(m)+'</td><td style="'+celda+';text-align:center">'+celdaNotaInforme(por[m]['1'])+'</td><td style="'+celda+';text-align:center">'+celdaNotaInforme(por[m]['2'])+'</td></tr>';
+  });
+  const q1=promedioInforme(cie.filter(r=>String(r.cuatrimestre)==='1').map(r=>r.nota)), q2=promedioInforme(cie.filter(r=>String(r.cuatrimestre)==='2').map(r=>r.nota));
+  if(!f) h+='<tr><td style="'+celda+'"><b>Promedio</b></td><td style="'+celda+';text-align:center"><b>'+(q1!==null?q1:'—')+'</b></td><td style="'+celda+';text-align:center"><b>'+(q2!==null?q2:'—')+'</b></td></tr>';
+  h+='</tbody></table>';
+  const desap=cie.filter(r=>{const x=notaNumInforme(r.nota);return x!==null&&x<7;});
+  if(desap.length) h+='<div>Desaprobadas (menos de 7): <b class="iseg-mal">'+desap.length+'</b> — '+asistEsc(Array.from(new Set(desap.map(r=>r.materia))).join(', '))+'</div>';
+  else h+='<div>Sin materias desaprobadas cargadas.</div>';
+  if(rec.length) h+='<div style="margin-top:3px"><b>Recuperatorios:</b> '+rec.map(r=>asistEsc(r.materia)+' ('+asistEsc(r.cuatrimestre)+'°C'+(r.turno?', '+asistEsc(r.turno):'')+'): '+celdaNotaInforme(r.nota)).join(' · ')+'</div>';
+  if(pro.length) h+='<div style="margin-top:3px"><b>Proyecto:</b> '+pro.map(r=>asistEsc(r.cuatrimestre)+'°C: '+celdaNotaInforme(r.nota)).join(' · ')+'</div>';
+  return h+(extra||'');
+}
+
+function andreHtmlResumenCurso(cursoId,rite){
+  const alumnos=(Array.isArray(ALUMNOS_RAW)?ALUMNOS_RAW:[]).filter(a=>String(a.curso)===String(cursoId));
+  const cie=(rite.cierres||[]).filter(andreDelCiclo);
+  const celda='border:1px solid var(--borde);padding:3px 6px';
+  const por={}, desapAl={};
+  cie.forEach(r=>{
+    const x=notaNumInforme(r.nota); if(x===null) return;
+    const m=r.materia||'(sin materia)';
+    const o=por[m]=por[m]||{q1:[],q2:[],desap:0};
+    (String(r.cuatrimestre)==='2'?o.q2:o.q1).push(x);
+    if(x<7){ o.desap++; desapAl[r.alumno_id]=(desapAl[r.alumno_id]||0)+1; }
+  });
+  const prom=a=>a.length?Math.round(a.reduce((s,v)=>s+v,0)/a.length*10)/10:'—';
+  const mats=Object.keys(por).sort((a,b)=>a.localeCompare(b));
+  let h='<div class="atit">Cómo viene '+asistEsc(cursoNombre(cursoId))+'</div><div style="font-size:11px;color:var(--texto3)">'+alumnos.length+' alumnos · Ciclo '+asistEsc(cicloActual)+'</div>';
+  if(!mats.length) return h+'<div style="margin-top:6px">Todavía no hay notas de cierre cargadas en este curso.</div>';
+  h+='<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0"><thead><tr><th style="'+celda+';text-align:left">Materia</th><th style="'+celda+'">Prom. 1°C</th><th style="'+celda+'">Prom. 2°C</th><th style="'+celda+'">Desaprob.</th></tr></thead><tbody>';
+  mats.forEach(m=>{ const o=por[m]; h+='<tr><td style="'+celda+'">'+asistEsc(m)+'</td><td style="'+celda+';text-align:center">'+prom(o.q1)+'</td><td style="'+celda+';text-align:center">'+prom(o.q2)+'</td><td style="'+celda+';text-align:center">'+(o.desap?'<span class="iseg-mal">'+o.desap+'</span>':'0')+'</td></tr>'; });
+  h+='</tbody></table>';
+  const conDesap=Object.keys(desapAl).length;
+  h+='<div>Alumnos con al menos una materia desaprobada: <b>'+conDesap+'</b> de '+alumnos.length+'.</div>';
+  const top=Object.keys(desapAl).map(id=>({n:desapAl[id],a:alumnos.find(x=>String(x.id)===String(id))})).filter(x=>x.a).sort((x,y)=>y.n-x.n).slice(0,5);
+  if(top.length) h+='<div style="margin-top:3px">Más materias desaprobadas: '+top.map(x=>asistEsc(x.a.nombre)+' ('+x.n+')').join(' · ')+'</div>';
+  return h+'<div style="margin-top:6px;font-size:11px;color:var(--texto3)">Para ver el detalle de uno, escribí "notas de &lt;apellido&gt;".</div>';
+}
+
+async function andreMostrarAlumno(alumno,opc){
+  opc=opc||{};
+  const espera=asistAgregar('bot','Buscando las notas…','pensando'); asistExpresion('pensando');
+  try {
+    const rol=asistRol();
+    const rite=(rol==='alumno')?await api('getRiteAlumnoCompleto',{alumnoId:alumno.id}):await andreDatosCurso(alumno.curso);
+    let extra='';
+    if(opc.asistencia&&['directivo','preceptor','dicyt'].indexOf(rol)>=0){
+      try {
+        const st=await apiLecturaConReintento('getAsistenciaAlumno',{nombreAlumno:alumno.nombre,cursoId:alumno.curso});
+        extra='<div style="margin-top:6px"><b>Asistencia</b> — 1°C: '+asistEsc(textoAsistInforme(st&&st.q1))+' · 2°C: '+asistEsc(textoAsistInforme(st&&st.q2))+'</div>';
+      } catch(e){ extra='<div style="margin-top:6px;color:var(--texto3)">No pude traer la asistencia.</div>'; }
+    }
+    if(espera.remove) espera.remove();
+    asistExpresion('pulgar'); asistAgregar('bot',andreHtmlNotas(alumno,rite,opc.materia,extra),'pulgar');
+  } catch(e){
+    if(espera.remove) espera.remove();
+    asistExpresion('nose');
+    asistAgregar('bot','No pude traer las notas: '+asistEsc(esErrorDeRed(e)?'se cortó la conexión. Probá de nuevo.':(e&&e.message)||e),'nose');
+  }
+}
+
+async function andreMostrarCurso(cursoId){
+  const espera=asistAgregar('bot','Revisando el curso…','pensando'); asistExpresion('pensando');
+  try {
+    const rite=await andreDatosCurso(cursoId);
+    if(espera.remove) espera.remove();
+    asistExpresion('pulgar'); asistAgregar('bot',andreHtmlResumenCurso(cursoId,rite),'pulgar');
+  } catch(e){
+    if(espera.remove) espera.remove();
+    asistExpresion('nose');
+    asistAgregar('bot','No pude traer el curso: '+asistEsc(esErrorDeRed(e)?'se cortó la conexión. Probá de nuevo.':(e&&e.message)||e),'nose');
+  }
+}
+
+function andreElegirAlumno(id){
+  const a=andreAlumnosPermitidos(asistRol()).find(x=>String(x.id)===String(id)); if(!a) return;
+  asistAgregar('yo',asistEsc(a.nombre)+' ('+asistEsc(cursoNombre(a.curso))+')');
+  andreMostrarAlumno(a,andrePendiente||{});
+}
+function andreElegirCurso(id){
+  if(!cursosVisibles().some(c=>c.id===id)&&asistRol()!=='docente') return;
+  asistAgregar('yo',asistEsc(cursoNombre(id)));
+  andreMostrarCurso(id);
+}
+
+async function andreResponderNotas(intento){
+  const rol=asistRol();
+  if(rol==='visitante'){ asistExpresion('nose'); asistAgregar('bot','Para consultar notas primero tenés que ingresar con tu perfil.','nose'); return; }
+  if(intento.tipo==='curso'){
+    if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Como estudiante puedo mostrarte tus propias notas: escribí "mis notas".','nose'); return; }
+    if(rol==='docente') return andreMostrarCurso(sesion.cursoId);
+    const cursos=cursosVisibles();
+    asistAgregar('bot','¿De qué curso querés el resumen?'+andreChipsHTML(cursos.map(c=>({texto:c.nombre,accion:"andreElegirCurso('"+c.id+"')"}))),'saludo');
+    return;
+  }
+  if(intento.tipo==='propias'){
+    if(rol!=='alumno'){ asistExpresion('nose'); asistAgregar('bot','Para ver las notas de un alumno escribí, por ejemplo: "notas de Pérez".','nose'); return; }
+    return andreMostrarAlumno(andreAlumnosPermitidos('alumno')[0],{});
+  }
+  if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Solo puedo mostrarte tus propias notas. Escribí "mis notas".','nose'); return; }
+  const permitidos=andreAlumnosPermitidos(rol);
+  const coincide=permitidos.filter(a=>{ const ws=asistNorm(a.nombre).split(' '); return intento.tokens.every(t=>ws.some(w=>w.indexOf(t)===0)); })
+                           .sort((a,b)=>a.nombre.localeCompare(b.nombre));
+  if(!coincide.length){
+    asistExpresion('nose');
+    asistAgregar('bot','No encontré a nadie con ese nombre entre los alumnos que podés consultar'+(rol==='docente'?' (los de tu curso: '+asistEsc(cursoNombre(sesion.cursoId))+')':'')+'. Probá con el apellido.','nose');
+    return;
+  }
+  if(coincide.length===1) return andreMostrarAlumno(coincide[0],intento);
+  andrePendiente=intento;
+  const mostrar=coincide.slice(0,8);
+  asistExpresion('saludo');
+  asistAgregar('bot','Encontré '+coincide.length+' alumnos. ¿Cuál?'+andreChipsHTML(mostrar.map(a=>({texto:a.nombre+' ('+cursoNombre(a.curso)+')',accion:"andreElegirAlumno('"+String(a.id).replace(/'/g,'')+"')"})))+(coincide.length>8?'<div style="font-size:11px;color:var(--texto3)">Hay más: agregá el nombre para acotar.</div>':''),'saludo');
 }
 
 // =====================================================================
