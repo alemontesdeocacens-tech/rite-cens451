@@ -1157,14 +1157,24 @@ tr:hover td{background:#fafaf8}
 // =====================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwnLfDMgvw5KLN7nnR-baVfNifkQd3RSb4gGESeS0CEEpzGVCnLoWhR2pw-aAL02kzK/exec';
 
+// Cualquier falla de conexión se convierte acá en un mensaje claro (nunca "Failed to fetch") y queda marcada
+// con .red para que los reintentos automáticos sigan funcionando.
+function errorDeRed(e){
+  const err=new Error('No se pudo conectar con el servidor. Revisá tu internet y probá de nuevo.');
+  err.red=true; err.original=e;
+  return err;
+}
 async function api(action, body = {}) {
   const payload = { action, ...body };
   if (sesion && sesion.token) payload.token = sesion.token;   // sesión firmada por el servidor
-  const res = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  });
-  const json = await res.json();
+  let res, json;
+  try {
+    res = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    });
+    json = await res.json();
+  } catch(e){ throw errorDeRed(e); }
   if (!json.ok) {
     if (json.codigo === 'AUTH') sesionVencida();
     throw new Error(json.error || 'Error de API');
@@ -1180,14 +1190,18 @@ function sesionVencida(){
 
 // --- Solo para CONSULTAS (nunca para guardar): reintenta si se corta la conexión ---
 function esErrorDeRed(e){
+  if(e&&e.red===true) return true;
   const m=String((e&&e.message)||e||'');
   return (e instanceof TypeError)||/Failed to fetch|NetworkError|Load failed|ERR_CONNECTION/i.test(m);
 }
 async function apiGetLectura(action, params = {}) {
   const conToken = (sesion && sesion.token) ? { ...params, token: sesion.token } : params;
   const qs=new URLSearchParams({ action, ...conToken }).toString();
-  const res = await fetch(API_URL + '?' + qs);
-  const json = await res.json();
+  let json;
+  try {
+    const res = await fetch(API_URL + '?' + qs);
+    json = await res.json();
+  } catch(e){ throw errorDeRed(e); }
   if (!json.ok) throw new Error(json.error || 'Error de API');
   return json.data;
 }
@@ -4720,7 +4734,7 @@ const ASIST_KB=[
   {id:'t_pdf',roles:['todos'],titulo:'Guardar o imprimir en PDF',pop:true,
    keys:['pdf','imprimir','impresion','guardar como','descargar','bajar','exportar'],
    pasos:['Tocá el botón "Imprimir / Guardar PDF" de la pantalla (aparece en los informes y en el RITE).','En la ventana de impresión, en "Destino" elegí "Guardar como PDF".','Tocá Guardar y elegí dónde dejarlo. En el celular: Compartir/Imprimir → Guardar como PDF.']},
-  {id:'t_error',roles:['todos'],titulo:'La app falla o dice "Failed to fetch"',pop:true,
+  {id:'t_error',roles:['todos'],titulo:'No se puede conectar o la app falla',pop:true,
    keys:['error','falla','fallo','no carga','no anda','no funciona','failed','fetch','conexion','internet','se corto','lento','no responde','colgo','cargando','no abre'],
    pasos:['Revisá tu conexión a internet (probá abrir otra página).','Esperá unos segundos y volvé a intentar.','Recargá la app con Ctrl+F5 (en el celular, cerrala y abrila de nuevo).','Probá con otra red (por ejemplo, datos móviles en vez de Wi-Fi). A veces el router o un antivirus corta la conexión.','Si sigue igual, avisá a preceptoría/dirección con una captura del mensaje.']},
   {id:'t_actualizar',roles:['todos'],titulo:'No veo una función nueva / actualizar la app',
@@ -4747,10 +4761,10 @@ const ASIST_KB=[
 
   {id:'t_andre_notas',roles:['docente','preceptor','directivo','dicyt'],titulo:'Preguntarle a Andre las notas de un alumno',pop:true,
    keys:['notas de un alumno','consultar notas','preguntar notas','como le va a','promedio de','notas de','como viene el curso','resumen del curso','cuantos desaprobados','asistencia de','faltas de','cuantas faltas','asistencia del curso'],
-   pasos:['Escribime, por ejemplo: "notas de Pérez" o "cómo le va a Lucía Gómez".','Si hay varios con ese nombre, elegí uno de los botones.','Podés acotar por materia ("notas de Pérez en Matemática").','Asistencia (solo Dirección, Preceptoría y Dicyt): "asistencia de Pérez", "cuántas faltas tiene Pérez" o "asistencia del curso" para ver quiénes tienen menos.','Para ver cómo viene un curso completo escribí "cómo viene el curso".','Veo lo mismo que ya ves en la app. Docentes: todas las materias del curso con el que ingresaste. Preceptoría: tus cursos. Dirección y Dicyt: todos.']},
+   pasos:['Escribime, por ejemplo: "notas de Pérez" o "cómo le va a Lucía Gómez".','Si hay varios con ese nombre, elegí uno de los botones.','Podés acotar por materia ("notas de Pérez en Matemática").','Asistencia: "asistencia de Pérez", "cuántas faltas tiene Pérez" o "asistencia del curso" para ver quiénes tienen menos.','Para ver cómo viene un curso completo escribí "cómo viene el curso".','Veo lo mismo que ya ves en la app. Docentes: las notas y la asistencia de todo el curso con el que ingresaste. Preceptoría: tus cursos. Dirección y Dicyt: todos.']},
   {id:'t_andre_mis_notas',roles:['alumno'],titulo:'Preguntarle a Andre mis notas',pop:true,
-   keys:['mis notas','mi promedio','como voy','como me va','mis calificaciones'],
-   pasos:['Escribime "mis notas" o "cómo voy".','Te muestro tus notas por materia y cuatrimestre, tu promedio y lo que está desaprobado.','Solo puedo mostrarte tus propias notas.']},
+   keys:['mis notas','mi promedio','como voy','como me va','mis calificaciones','mi asistencia','mis faltas','cuantas faltas tengo','mis inasistencias'],
+   pasos:['Escribime "mis notas" o "cómo voy". Para tus faltas: "mi asistencia" o "cuántas faltas tengo".','Te muestro tus notas por materia y cuatrimestre, tu promedio y lo que está desaprobado, y tus días asistidos con el porcentaje.','Solo puedo mostrarte lo tuyo.']},
 
   // ---------- ESTUDIANTE ----------
   {id:'t_rite',roles:['alumno'],titulo:'Ver y descargar mi RITE',pop:true,
@@ -5268,10 +5282,10 @@ function andreAlumnosPermitidos(rol){
 function andreIntencionNotas(q){
   if(/^(como|donde|que|cual|cuando|por que)\b.*\b(veo|cargo|hago|puedo|subo|genero|descargo|imprimo|guardo|consulto|miro|reviso|busco|se puede)\b/.test(q)) return null;   // son preguntas de "cómo se hace": las responde la guía
   if(/\b(como (viene|anda|va|esta|se comporta|rinde)|resumen|rendimiento|situacion|notas|promedios?|desaprobados)( general)? (del |de el |el )?curso\b/.test(q)||/\bel curso en su totalidad\b/.test(q)) return {tipo:'curso'};
-  if(/\b(mis notas|mi promedio|mis calificaciones|mis materias|como voy|como me va|mi boletin)\b/.test(q)) return {tipo:'propias'};
+  if(/\b(mis notas|mi promedio|mis calificaciones|mis materias|como voy|como me va|mi boletin)\b/.test(q)&&!/\bcomo voy de asistencia\b/.test(q)) return {tipo:'propias',asistencia:/\b(asistencia|faltas|inasistencias|ausencias)\b/.test(q)};
   if(/\b(quien|quienes) (falto|faltaron|falta|no vino|no vinieron)\b/.test(q)) return {tipo:'faltas_hoy'};
   if(/\b(asistencia|faltas|inasistencias|ausencias)( general)? (del |de el |el )?curso\b/.test(q)) return {tipo:'asistencia_curso'};
-  if(/\b(mi asistencia|mis faltas|mis inasistencias|mis ausencias)\b/.test(q)) return {tipo:'propias_asistencia'};
+  if(/\b(mi asistencia|mis faltas|mis inasistencias|mis ausencias|cuantas (faltas|inasistencias|ausencias) (tengo|hice|acumule|llevo)|como voy de asistencia)\b/.test(q)) return {tipo:'propias_asistencia'};
   let m=q.match(/\b(?:notas?|calificaciones?|promedio|boletin|rendimiento|materias (?:que )?(?:debe|adeuda|desaprobo|desaprobadas))\s+(?:de(?:l| la)?\s+)?(.+)$/);
   if(!m) m=q.match(/\bcomo (?:le va|va|anda|viene|esta|rinde)\s+(?:a\s+|el alumno\s+|la alumna\s+)?(.+)$/);
   if(!m) m=q.match(/\bcuantas (?:faltas|inasistencias|ausencias) (?:tiene|tienen|hizo|acumula)\s+(.+)$/);
@@ -5293,7 +5307,7 @@ function andreChipsHTML(items){
 async function andreDatosCurso(cursoId){
   const c=andreCache[cursoId];
   if(c&&Date.now()-c.t<120000) return c.datos;
-  const datos=await api('getRiteCurso',{ciclo:cicloActual,cursoId});
+  const datos=await apiLecturaConReintento('getRiteCurso',{ciclo:cicloActual,cursoId});
   andreCache[cursoId]={t:Date.now(),datos:datos};
   return datos;
 }
@@ -5368,9 +5382,9 @@ async function andreMostrarAlumno(alumno,opc){
         '<div style="margin-top:6px;font-size:11px;color:var(--texto3)">Para ver sus notas, escribí "notas de '+asistEsc(alumno.nombre.split(' ')[0].toLowerCase())+'".</div>','pulgar');
       return;
     }
-    const rite=(rol==='alumno')?await api('getRiteAlumnoCompleto',{alumnoId:alumno.id}):await andreDatosCurso(alumno.curso);
+    const rite=(rol==='alumno')?await apiLecturaConReintento('getRiteAlumnoCompleto',{alumnoId:alumno.id}):await andreDatosCurso(alumno.curso);
     let extra='';
-    if(opc.asistencia&&['directivo','preceptor','dicyt'].indexOf(rol)>=0){
+    if(opc.asistencia){
       try {
         const st=await apiLecturaConReintento('getAsistenciaAlumno',{nombreAlumno:alumno.nombre,cursoId:alumno.curso});
         extra='<div style="margin-top:6px"><b>Asistencia</b> — 1°C: '+asistEsc(textoAsistInforme(st&&st.q1))+' · 2°C: '+asistEsc(textoAsistInforme(st&&st.q2))+'</div>';
@@ -5422,7 +5436,7 @@ async function andreMostrarAsistenciaCurso(cursoId){
   }
 }
 function andreElegirCursoAsistencia(id){
-  if(!cursosVisibles().some(c=>c.id===id)) return;
+  if(!cursosVisibles().some(c=>c.id===id)&&!(asistRol()==='docente'&&String(sesion.cursoId)===String(id))) return;
   asistAgregar('yo',asistEsc(cursoNombre(id)));
   andreMostrarAsistenciaCurso(id);
 }
@@ -5442,18 +5456,18 @@ async function andreResponderNotas(intento){
   const rol=asistRol();
   if(rol==='visitante'){ asistExpresion('nose'); asistAgregar('bot','Para consultar notas primero tenés que ingresar con tu perfil.','nose'); return; }
   if(intento.tipo==='faltas_hoy'){ asistExpresion('nose'); asistAgregar('bot','Todavía no puedo decirte quién faltó hoy: acá tengo el porcentaje de asistencia por cuatrimestre ("asistencia de Pérez" o "asistencia del curso"). Lo del día lo ves en la app de Asistencia.','nose'); return; }
-  const puedeAsistencia=['directivo','preceptor','dicyt'].indexOf(rol)>=0;
-  if(!puedeAsistencia&&(intento.tipo==='asistencia_curso'||intento.tipo==='propias_asistencia'||(intento.tipo==='alumno'&&intento.soloAsistencia))){
-    asistExpresion('nose');
-    asistAgregar('bot',rol==='alumno'?'Tu asistencia la consultás con tu preceptor/a o en la app de Asistencia. Yo puedo mostrarte tus notas: escribí "mis notas".':'La asistencia la consultan Dirección, Preceptoría y Dicyt. Yo puedo mostrarte las notas de tu curso: escribí, por ejemplo, "notas de Pérez".','nose');
-    return;
-  }
   if(intento.tipo==='asistencia_curso'){
+    if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Como estudiante podés ver tu propia asistencia: escribí "mi asistencia" o "cuántas faltas tengo".','nose'); return; }
+    if(rol==='docente') return andreMostrarAsistenciaCurso(sesion.cursoId);
     asistAgregar('bot','¿De qué curso querés la asistencia?'+andreChipsHTML(cursosVisibles().map(c=>({texto:c.nombre,accion:"andreElegirCursoAsistencia('"+c.id+"')"}))),'saludo');
     return;
   }
+  if(intento.tipo==='propias_asistencia'){
+    if(rol!=='alumno'){ asistExpresion('nose'); asistAgregar('bot','Para ver la asistencia de un alumno escribí, por ejemplo: "asistencia de Pérez".','nose'); return; }
+    return andreMostrarAlumno(andreAlumnosPermitidos('alumno')[0],{soloAsistencia:true});
+  }
   if(intento.tipo==='curso'){
-    if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Como estudiante puedo mostrarte tus propias notas: escribí "mis notas".','nose'); return; }
+    if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Como estudiante puedo mostrarte lo tuyo: escribí "mis notas" o "mi asistencia".','nose'); return; }
     if(rol==='docente') return andreMostrarCurso(sesion.cursoId);
     const cursos=cursosVisibles();
     asistAgregar('bot','¿De qué curso querés el resumen?'+andreChipsHTML(cursos.map(c=>({texto:c.nombre,accion:"andreElegirCurso('"+c.id+"')"}))),'saludo');
@@ -5461,9 +5475,9 @@ async function andreResponderNotas(intento){
   }
   if(intento.tipo==='propias'){
     if(rol!=='alumno'){ asistExpresion('nose'); asistAgregar('bot','Para ver las notas de un alumno escribí, por ejemplo: "notas de Pérez".','nose'); return; }
-    return andreMostrarAlumno(andreAlumnosPermitidos('alumno')[0],{});
+    return andreMostrarAlumno(andreAlumnosPermitidos('alumno')[0],{asistencia:!!intento.asistencia});
   }
-  if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Solo puedo mostrarte tus propias notas. Escribí "mis notas".','nose'); return; }
+  if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Solo puedo mostrarte lo tuyo: escribí "mis notas" o "mi asistencia".','nose'); return; }
   const permitidos=andreAlumnosPermitidos(rol);
   const coincide=permitidos.filter(a=>{ const ws=asistNorm(a.nombre).split(' '); return intento.tokens.every(t=>ws.some(w=>w.indexOf(t)===0)); })
                            .sort((a,b)=>a.nombre.localeCompare(b.nombre));
