@@ -1140,7 +1140,7 @@ tr:hover td{background:#fafaf8}
     <button onclick="asistCerrar()" aria-label="Cerrar">✕</button>
   </div>
   <div class="asist-body" id="asist-body"></div>
-  <div class="asist-nota">Consulto notas con tus mismos permisos. No modifico nada ni envío datos fuera de la app.</div>
+  <div class="asist-nota">Consulto notas y asistencia con tus mismos permisos. No modifico nada ni envío datos fuera de la app.</div>
   <div class="asist-form">
     <input id="asist-input" type="text" placeholder="Escribile a Andre… ej: subir archivos" autocomplete="off" onkeydown="if(event.key==='Enter')asistEnviar()">
     <button onclick="asistEnviar()" aria-label="Enviar">➤</button>
@@ -4746,8 +4746,8 @@ const ASIST_KB=[
    texto:'Si olvidaste tu clave, pedile a Dirección que la reinicie: te va a dar una clave temporal. Si dice que tu registro está pendiente, Dirección todavía no lo aprobó. Si dice que el acceso está bloqueado, consultalo con Dirección. Y si fallaste 5 veces, esperá 10 minutos.'},
 
   {id:'t_andre_notas',roles:['docente','preceptor','directivo','dicyt'],titulo:'Preguntarle a Andre las notas de un alumno',pop:true,
-   keys:['notas de un alumno','consultar notas','preguntar notas','como le va a','promedio de','notas de','como viene el curso','resumen del curso','cuantos desaprobados'],
-   pasos:['Escribime, por ejemplo: "notas de Pérez" o "cómo le va a Lucía Gómez".','Si hay varios con ese nombre, elegí uno de los botones.','Podés acotar por materia ("notas de Pérez en Matemática") o pedir la asistencia ("notas y asistencia de Pérez"; solo Dirección, Preceptoría y Dicyt).','Para ver cómo viene un curso completo escribí "cómo viene el curso".','Veo lo mismo que ya ves en la app. Docentes: todas las materias del curso con el que ingresaste. Preceptoría: tus cursos. Dirección y Dicyt: todos.']},
+   keys:['notas de un alumno','consultar notas','preguntar notas','como le va a','promedio de','notas de','como viene el curso','resumen del curso','cuantos desaprobados','asistencia de','faltas de','cuantas faltas','asistencia del curso'],
+   pasos:['Escribime, por ejemplo: "notas de Pérez" o "cómo le va a Lucía Gómez".','Si hay varios con ese nombre, elegí uno de los botones.','Podés acotar por materia ("notas de Pérez en Matemática").','Asistencia (solo Dirección, Preceptoría y Dicyt): "asistencia de Pérez", "cuántas faltas tiene Pérez" o "asistencia del curso" para ver quiénes tienen menos.','Para ver cómo viene un curso completo escribí "cómo viene el curso".','Veo lo mismo que ya ves en la app. Docentes: todas las materias del curso con el que ingresaste. Preceptoría: tus cursos. Dirección y Dicyt: todos.']},
   {id:'t_andre_mis_notas',roles:['alumno'],titulo:'Preguntarle a Andre mis notas',pop:true,
    keys:['mis notas','mi promedio','como voy','como me va','mis calificaciones'],
    pasos:['Escribime "mis notas" o "cómo voy".','Te muestro tus notas por materia y cuatrimestre, tu promedio y lo que está desaprobado.','Solo puedo mostrarte tus propias notas.']},
@@ -5246,7 +5246,7 @@ async function reiniciarClaveDocenteUI(dni){
 // =====================================================================
 let andreCache={};          // { cursoId: {t, datos} } para no repetir el mismo pedido durante 2 minutos
 let andrePendiente=null;    // filtros de la consulta mientras se elige entre varios alumnos
-const ANDRE_STOP=['de','del','la','el','los','las','al','alumno','alumna','estudiante','por','favor','me','podes','podrias','decir','dame','pasame','mostrame','quiero','ver','sus','su','con','que','y'];
+const ANDRE_STOP=['de','del','la','el','los','las','al','alumno','alumna','estudiante','tiene','tienen','hizo','acumula','por','favor','me','podes','podrias','decir','dame','pasame','mostrame','quiero','ver','sus','su','con','que','y'];
 const ANDRE_NO_NOMBRE=['todos','todas','alumnos','alumnas','materias','cursos','curso','mios','mias','general'];
 
 function asistLimpiarChat(){
@@ -5266,18 +5266,24 @@ function andreAlumnosPermitidos(rol){
 
 // Devuelve {tipo:'curso'} | {tipo:'propias'} | {tipo:'alumno',tokens,materia,asistencia} | null  (q viene normalizada)
 function andreIntencionNotas(q){
-  if(/^(como|donde|que|cual|cuando|por que)\b.*\b(veo|cargo|hago|puedo|subo|genero|descargo|imprimo|guardo|se puede)\b/.test(q)) return null;   // son preguntas de "cómo se hace": las responde la guía
+  if(/^(como|donde|que|cual|cuando|por que)\b.*\b(veo|cargo|hago|puedo|subo|genero|descargo|imprimo|guardo|consulto|miro|reviso|busco|se puede)\b/.test(q)) return null;   // son preguntas de "cómo se hace": las responde la guía
   if(/\b(como (viene|anda|va|esta|se comporta|rinde)|resumen|rendimiento|situacion|notas|promedios?|desaprobados)( general)? (del |de el |el )?curso\b/.test(q)||/\bel curso en su totalidad\b/.test(q)) return {tipo:'curso'};
   if(/\b(mis notas|mi promedio|mis calificaciones|mis materias|como voy|como me va|mi boletin)\b/.test(q)) return {tipo:'propias'};
+  if(/\b(quien|quienes) (falto|faltaron|falta|no vino|no vinieron)\b/.test(q)) return {tipo:'faltas_hoy'};
+  if(/\b(asistencia|faltas|inasistencias|ausencias)( general)? (del |de el |el )?curso\b/.test(q)) return {tipo:'asistencia_curso'};
+  if(/\b(mi asistencia|mis faltas|mis inasistencias|mis ausencias)\b/.test(q)) return {tipo:'propias_asistencia'};
   let m=q.match(/\b(?:notas?|calificaciones?|promedio|boletin|rendimiento|materias (?:que )?(?:debe|adeuda|desaprobo|desaprobadas))\s+(?:de(?:l| la)?\s+)?(.+)$/);
   if(!m) m=q.match(/\bcomo (?:le va|va|anda|viene|esta|rinde)\s+(?:a\s+|el alumno\s+|la alumna\s+)?(.+)$/);
+  if(!m) m=q.match(/\bcuantas (?:faltas|inasistencias|ausencias) (?:tiene|tienen|hizo|acumula)\s+(.+)$/);
+  if(!m) m=q.match(/\b(?:asistencia|faltas|inasistencias|ausencias)\s+(?:de(?:l| la)?\s+)?(.+)$/);
   if(!m) return null;
   let resto=m[1], materia='';
   const k=resto.indexOf(' en '); if(k>0){ materia=resto.slice(k+4).trim(); resto=resto.slice(0,k); }
-  const asistencia=/\b(asistencia|faltas|inasistencias)\b/.test(q);
-  const tokens=resto.split(' ').filter(w=>w.length>=3&&ANDRE_STOP.indexOf(w)<0&&['asistencia','faltas','inasistencias'].indexOf(w)<0);
+  const asistencia=/\b(asistencia|faltas|inasistencias|ausencias)\b/.test(q);
+  const hayNotas=/\b(notas?|calificaciones?|promedios?|boletin|materias?|rendimiento)\b/.test(q);
+  const tokens=resto.split(' ').filter(w=>w.length>=3&&ANDRE_STOP.indexOf(w)<0&&['asistencia','faltas','inasistencias','ausencias'].indexOf(w)<0);
   if(!tokens.length||tokens.some(t=>ANDRE_NO_NOMBRE.indexOf(t)>=0)) return null;
-  return {tipo:'alumno',tokens:tokens,materia:materia,asistencia:asistencia};
+  return {tipo:'alumno',tokens:tokens,materia:materia,asistencia:asistencia,soloAsistencia:asistencia&&!hayNotas};
 }
 
 function andreChipsHTML(items){
@@ -5353,6 +5359,15 @@ async function andreMostrarAlumno(alumno,opc){
   const espera=asistAgregar('bot','Buscando las notas…','pensando'); asistExpresion('pensando');
   try {
     const rol=asistRol();
+    if(opc.soloAsistencia){
+      const st=await apiLecturaConReintento('getAsistenciaAlumno',{nombreAlumno:alumno.nombre,cursoId:alumno.curso});
+      if(espera.remove) espera.remove();
+      asistExpresion('pulgar');
+      asistAgregar('bot','<div class="atit">'+asistEsc(alumno.nombre)+'</div><div style="font-size:11px;color:var(--texto3)">'+asistEsc(cursoNombre(alumno.curso))+' · Asistencia '+asistEsc(cicloActual)+'</div>'+
+        '<div style="margin-top:6px"><b>1° cuatrimestre:</b> '+asistEsc(textoAsistInforme(st&&st.q1))+'</div><div><b>2° cuatrimestre:</b> '+asistEsc(textoAsistInforme(st&&st.q2))+'</div>'+
+        '<div style="margin-top:6px;font-size:11px;color:var(--texto3)">Para ver sus notas, escribí "notas de '+asistEsc(alumno.nombre.split(' ')[0].toLowerCase())+'".</div>','pulgar');
+      return;
+    }
     const rite=(rol==='alumno')?await api('getRiteAlumnoCompleto',{alumnoId:alumno.id}):await andreDatosCurso(alumno.curso);
     let extra='';
     if(opc.asistencia&&['directivo','preceptor','dicyt'].indexOf(rol)>=0){
@@ -5383,6 +5398,35 @@ async function andreMostrarCurso(cursoId){
   }
 }
 
+async function andreMostrarAsistenciaCurso(cursoId){
+  const espera=asistAgregar('bot','Consultando la asistencia del curso (puede tardar unos segundos)…','pensando'); asistExpresion('pensando');
+  try {
+    const lista=andreAlumnosPermitidos(asistRol()).filter(a=>String(a.curso)===String(cursoId));
+    if(!lista.length){ if(espera.remove) espera.remove(); asistExpresion('nose'); asistAgregar('bot','No encontré alumnos de ese curso.','nose'); return; }
+    const r=await obtenerAsistenciaInforme(cursoId,lista.map(a=>({id:a.id,nombre:a.nombre})),null);
+    const filas=lista.map(a=>{ const s=(r.datos||{})[a.id]||{}; const ps=[s.q1&&s.q1.pct,s.q2&&s.q2.pct].filter(x=>typeof x==='number'); return {a:a,s:s,min:ps.length?Math.min.apply(null,ps):999}; }).sort((x,y)=>x.min-y.min);
+    const prom=q=>{ const v=filas.map(f=>f.s[q]&&f.s[q].pct).filter(x=>typeof x==='number'); return v.length?Math.round(v.reduce((a,b)=>a+b,0)/v.length)+'%':'—'; };
+    const celda='border:1px solid var(--borde);padding:3px 6px';
+    let h='<div class="atit">Asistencia de '+asistEsc(cursoNombre(cursoId))+'</div><div style="font-size:11px;color:var(--texto3)">'+lista.length+' alumnos · Ciclo '+asistEsc(cicloActual)+'</div>'+
+      '<div style="margin-top:4px">Promedio del curso — 1°C: <b>'+prom('q1')+'</b> · 2°C: <b>'+prom('q2')+'</b></div>'+
+      '<table style="width:100%;border-collapse:collapse;font-size:12px;margin:6px 0"><thead><tr><th style="'+celda+';text-align:left">Con menos asistencia</th><th style="'+celda+'">1°C</th><th style="'+celda+'">2°C</th></tr></thead><tbody>';
+    filas.slice(0,12).forEach(f=>{ h+='<tr><td style="'+celda+'">'+asistEsc(f.a.nombre)+'</td><td style="'+celda+';text-align:center">'+(f.s.q1?f.s.q1.pct+'%':'—')+'</td><td style="'+celda+';text-align:center">'+(f.s.q2?f.s.q2.pct+'%':'—')+'</td></tr>'; });
+    h+='</tbody></table>'+(lista.length>12?'<div style="font-size:11px;color:var(--texto3)">Muestro los 12 con menos asistencia. Para ver a uno puntual: "asistencia de &lt;apellido&gt;".</div>':'');
+    if(r.fallos) h+='<div style="font-size:11px;color:var(--texto3)">No pude traer la asistencia de '+r.fallos+' alumno(s).</div>';
+    if(espera.remove) espera.remove();
+    asistExpresion('pulgar'); asistAgregar('bot',h,'pulgar');
+  } catch(e){
+    if(espera.remove) espera.remove();
+    asistExpresion('nose');
+    asistAgregar('bot','No pude traer la asistencia: '+asistEsc(esErrorDeRed(e)?'se cortó la conexión. Probá de nuevo.':(e&&e.message)||e),'nose');
+  }
+}
+function andreElegirCursoAsistencia(id){
+  if(!cursosVisibles().some(c=>c.id===id)) return;
+  asistAgregar('yo',asistEsc(cursoNombre(id)));
+  andreMostrarAsistenciaCurso(id);
+}
+
 function andreElegirAlumno(id){
   const a=andreAlumnosPermitidos(asistRol()).find(x=>String(x.id)===String(id)); if(!a) return;
   asistAgregar('yo',asistEsc(a.nombre)+' ('+asistEsc(cursoNombre(a.curso))+')');
@@ -5397,6 +5441,17 @@ function andreElegirCurso(id){
 async function andreResponderNotas(intento){
   const rol=asistRol();
   if(rol==='visitante'){ asistExpresion('nose'); asistAgregar('bot','Para consultar notas primero tenés que ingresar con tu perfil.','nose'); return; }
+  if(intento.tipo==='faltas_hoy'){ asistExpresion('nose'); asistAgregar('bot','Todavía no puedo decirte quién faltó hoy: acá tengo el porcentaje de asistencia por cuatrimestre ("asistencia de Pérez" o "asistencia del curso"). Lo del día lo ves en la app de Asistencia.','nose'); return; }
+  const puedeAsistencia=['directivo','preceptor','dicyt'].indexOf(rol)>=0;
+  if(!puedeAsistencia&&(intento.tipo==='asistencia_curso'||intento.tipo==='propias_asistencia'||(intento.tipo==='alumno'&&intento.soloAsistencia))){
+    asistExpresion('nose');
+    asistAgregar('bot',rol==='alumno'?'Tu asistencia la consultás con tu preceptor/a o en la app de Asistencia. Yo puedo mostrarte tus notas: escribí "mis notas".':'La asistencia la consultan Dirección, Preceptoría y Dicyt. Yo puedo mostrarte las notas de tu curso: escribí, por ejemplo, "notas de Pérez".','nose');
+    return;
+  }
+  if(intento.tipo==='asistencia_curso'){
+    asistAgregar('bot','¿De qué curso querés la asistencia?'+andreChipsHTML(cursosVisibles().map(c=>({texto:c.nombre,accion:"andreElegirCursoAsistencia('"+c.id+"')"}))),'saludo');
+    return;
+  }
   if(intento.tipo==='curso'){
     if(rol==='alumno'){ asistExpresion('nose'); asistAgregar('bot','Como estudiante puedo mostrarte tus propias notas: escribí "mis notas".','nose'); return; }
     if(rol==='docente') return andreMostrarCurso(sesion.cursoId);
